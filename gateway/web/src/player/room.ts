@@ -845,7 +845,7 @@ function gamepadPad() {
 function keyboardPad() {
   const k = state.keys;
   const pad = emptyPad();
-  const map: Record<string, Button> = { j: 'a', k: 'b', u: 'x', i: 'y', Enter: 'start', q: 'lb', e: 'rb', Shift: 'lt', o: 'rt' };
+  const map: Record<string, Button> = { j: 'a', ' ': 'a', k: 'b', u: 'x', i: 'y', Enter: 'start', q: 'lb', e: 'rb', Shift: 'lt', o: 'rt' };
   for (const [key, btn] of Object.entries(map)) if (k.has(key.toLowerCase()) || k.has(key)) pad.b[btn] = true;
   pad.a.lx = (k.has('d') ? 1 : 0) - (k.has('a') ? 1 : 0);
   pad.a.ly = (k.has('s') ? 1 : 0) - (k.has('w') ? 1 : 0);
@@ -964,7 +964,7 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   state.keys.add(e.key.length === 1 ? e.key.toLowerCase() : e.key);
-  if (e.key === 'Enter' || e.key.startsWith('Arrow')) e.preventDefault();
+  if (e.key === 'Enter' || e.key === ' ' || e.key.startsWith('Arrow')) e.preventDefault();
   flush();
 });
 window.addEventListener('keyup', (e) => {

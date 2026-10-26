@@ -119,7 +119,7 @@ The full CLI reference, including the JSONL mode for agents, is in [`gateway/REA
 
 | Action | Keys | | Action | Keys |
 | --- | --- | --- | --- | --- |
-| Move | `W` `A` `S` `D` | | A / B / X / Y | `J` / `K` / `U` / `I` |
+| Move | `W` `A` `S` `D` | | A / B / X / Y | `J` or `Space` / `K` / `U` / `I` |
 | Camera (right stick) | Arrow keys | | LB / RB | `Q` / `E` |
 | Start | `Enter` | | LT / RT | `Shift` / `O` |
 | Chat | `T` | | Sound | `M` |
@@ -132,12 +132,15 @@ the terrorists, GIGN, GSG-9, SAS and SEAL for the counter-terrorists. They run a
 with guns instead of his attacks. Pick one like any other character, from the host panel or with "Quiero ser"
 in the page.
 
-| Button | Action |
-| --- | --- |
-| X | Fire. Hold it with the rifle for automatic fire. An empty clip reloads. |
-| B | Next weapon: rifle (AK-47 for terrorists, M4A1 for counter-terrorists), AWP, Desert Eagle, knife |
-| Y | Throw an HE grenade. Each soldier carries three and gets one back every ten seconds. |
-| A | Jump |
+| Button | Page key | Host PC key | Action |
+| --- | --- | --- | --- |
+| X | `U` | `A` | Fire. Hold it with the rifle for automatic fire. An empty clip reloads. |
+| B | `K` | `Z` | Next weapon: rifle (AK-47 for terrorists, M4A1 for counter-terrorists), AWP, Desert Eagle, knife |
+| Y | `I` | `S` | Throw an HE grenade. Each soldier carries three and gets one back every ten seconds. |
+| A | `J` or `Space` | `X` or `Space` | Jump |
+
+The host PC's keys are the Mod Loader's defaults, where the `A` key is the X button: it fires, it doesn't jump.
+`Space` jumps on both, for every character, unless the Mod Loader's keyboard settings already use it.
 
 The AWP goes through every enemy in its line of fire, and grenades launch enemies into the air. Each kill is
 credited to the player who made it. In battle mode the weapons hit the other players.

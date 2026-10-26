@@ -207,7 +207,7 @@ function PadCard() {
 
 const KEYS: [string[], string][] = [
   [['W', 'A', 'S', 'D'], 'moverse'],
-  [['J'], 'A · saltar'],
+  [['J', 'Espacio'], 'A · saltar'],
   [['K'], 'B · acción, spin dash'],
   [['U', 'I'], 'X · Y'],
   [['Q', 'E'], 'LB · RB'],
@@ -223,7 +223,7 @@ const KEYS: [string[], string][] = [
 // weapon (rifle, AWP, Desert Eagle, knife), Y throws an HE grenade (three, one back every ten seconds).
 const SOLDIER_KEYS: [string[], string][] = [
   [['W', 'A', 'S', 'D'], 'moverse'],
-  [['J'], 'A · saltar'],
+  [['J', 'Espacio'], 'A · saltar'],
   [['U'], 'X · disparar (mantén con el rifle)'],
   [['K'], 'B · cambiar de arma'],
   [['I'], 'Y · granada'],

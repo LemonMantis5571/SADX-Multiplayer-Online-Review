@@ -185,7 +185,8 @@ mira), él juega como jugador 1 con el teclado o mando de la PC (ese puesto es s
 ventana del juego no se minimiza (la sala la vuelve a abrir si pasa). Los soldados de Counter-Strike se eligen
 como cualquier personaje (panel del anfitrión, o "Quiero ser" en la página): X dispara (con el rifle, mantener
 es ráfaga), B cambia de arma, Y lanza una granada (tres, recupera una cada diez segundos) y A salta; la página
-muestra esas teclas a quien juega con uno. Para cerrar: el paso 9, o doble clic en `SADX-Online-cerrar.cmd`.
+muestra esas teclas a quien juega con uno. En el teclado de la PC son las teclas del Mod Loader: tecla `A` = botón
+X (dispara), `Z` = B, `S` = Y y `X` = A (salta). Espacio salta en la PC y en la página. Para cerrar: el paso 9, o doble clic en `SADX-Online-cerrar.cmd`.
 
 **Hecho cuando:** `doctor` da `gateway` y `sadxMod` en `ok`, la captura muestra la pantalla dividida y el
 usuario tiene el enlace.
@@ -245,6 +246,7 @@ script, cómo publicar una release y cómo cambiar la base del mod: [`README.md`
 | Vídeo negro o congelado | Ventana minimizada, o ningún codificador | Restaura la ventana; `doctor` (`checks.video.error`) |
 | SADX se cayó (aviso `SADX has crashed at …`) | Error del juego o del mod | Al cerrar el aviso, la sala lo reabre (hasta 3 veces en 2 min). El informe está en `<SADX>\CrashDump\<fecha>\*_extra_info_*.txt` (dirección, nivel, posiciones): pásaselo al usuario |
 | Los amigos no oyen | El sonido empieza apagado en el navegador | 🔊 o tecla M en la página |
+| "No puedo saltar" con un soldado en la PC | La tecla `A` del teclado es el botón X (dispara) | Saltar con Espacio o con la tecla `X` |
 | Los soldados son cajas y no suenan | Counter-Strike 1.6 sin instalar, o `sadx-online.ini` sin `Path` | Paso 7; reabre el juego (`down` y `up`) |
 | El log dice `[CS] … missing` | La carpeta no es la de Half-Life, o le faltan archivos | `--cstrike` con la carpeta que tiene `cstrike`; en Steam, "Verificar integridad" de Counter-Strike |
 | `build.ps1`: `Filename too long` | Ruta del repo demasiado larga | Clonar en una ruta corta (paso 4) |

@@ -38,6 +38,13 @@ namespace browser_bridge
 		bool winsockStarted = false;
 		BrowserPad pads[PLAYER_MAX]{};
 
+		// Space jumps on the host PC's keyboard too: the Mod Loader's jump key is X (its A button), which nobody
+		// guesses, least of all someone playing a Counter-Strike soldier. Off when its keyboard settings already
+		// give Space to a button.
+		bool spaceJumps = true;
+		bool spaceHeld = false;
+		int keyboardPlayer = 0;
+
 		bool JsonBool(const nlohmann::json& obj, const char* name)
 		{
 			const auto it = obj.find(name);
@@ -99,6 +106,44 @@ namespace browser_bridge
 			if (buttons & Buttons_L) controller->l = 0xFF;
 			if (buttons & Buttons_R) controller->r = 0xFF;
 			state.oldButtons = buttons;
+		}
+
+		void ReadKeyboardSettings()
+		{
+			wchar_t path[MAX_PATH] = {};
+			GetModuleFileNameW(nullptr, path, MAX_PATH);
+			if (wchar_t* slash = wcsrchr(path, L'\\')) *slash = 0;
+			const std::wstring ini = std::wstring(path) + L"\\mods\\.modloader\\extlib\\SDL2\\SDLconfig.ini";
+			keyboardPlayer = GetPrivateProfileIntW(L"Config", L"KeyboardPlayer", 0, ini.c_str());
+			if (keyboardPlayer < 0 || keyboardPlayer >= PLAYER_MAX) keyboardPlayer = 0;
+			wchar_t keys[4096] = {};
+			GetPrivateProfileSectionW(L"Keyboard", keys, ARRAYSIZE(keys), ini.c_str());
+			for (const wchar_t* entry = keys; *entry; entry += wcslen(entry) + 1)
+			{
+				const wchar_t* value = wcschr(entry, L'=');
+				if (value && _wtoi(value + 1) == VK_SPACE) spaceJumps = false;
+			}
+		}
+
+		void ApplySpace()
+		{
+			auto controller = per[keyboardPlayer];
+			if (!spaceJumps || !controller) return;
+			DWORD focused = 0;
+			GetWindowThreadProcessId(GetForegroundWindow(), &focused);
+			const bool down = focused == GetCurrentProcessId() && (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
+			const bool otherKey = (controller->on & Buttons_A) != 0;
+			if (down)
+			{
+				if (!spaceHeld && !otherKey) controller->press |= Buttons_A;
+				controller->on |= Buttons_A;
+				controller->off &= ~Buttons_A;
+			}
+			else if (spaceHeld && !otherKey)
+			{
+				controller->release |= Buttons_A;
+			}
+			spaceHeld = down;
 		}
 
 		void ResetPad(BrowserPad& state)
@@ -173,6 +218,7 @@ namespace browser_bridge
 			}
 			LocalFree(argv);
 		}
+		ReadKeyboardSettings();
 
 		WSADATA data{};
 		const int startup = WSAStartup(MAKEWORD(2, 2), &data);
@@ -302,6 +348,7 @@ namespace browser_bridge
 #ifdef MULTI_NETPLAY
 		if (netplay.IsConnected()) return;
 #endif
+		ApplySpace();
 		if (!multiplayer::IsEnabled())
 		{
 			for (auto& state : pads)

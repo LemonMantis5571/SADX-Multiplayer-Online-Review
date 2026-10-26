@@ -64,7 +64,8 @@ la misma sala. Para reiniciar solo la sala sin cortar el enlace ni el juego:
    `--cstrike "<carpeta Half-Life>"`) y escribe la carpeta en
    `mods\sadx-multiplayer\sadx-online.ini` (`[CounterStrike]`, `Path=`). Sin él
    son maniquíes de cajas, mudos. Controles: X dispara, B cambia de arma, Y
-   granada, A salta.
+   granada, A salta (en la página U, K, I y J; en el teclado de la PC las teclas
+   del Mod Loader: A, Z, S y X). Espacio salta en los dos.
 
 Sin el lanzador, paso a paso:
 
