@@ -146,11 +146,13 @@ export class H264View extends EventEmitter {
     this.pending = null;
     this.gop = [];
     let produced = false;
+    let captureLost = false; // gfxcapture itself failed (e.g. "Failed to find capture source"): no window
 
     proc.stdout.on('data', (chunk) => { produced = true; this._onData(chunk); });
     proc.stderr.on('data', (chunk) => {
       const text = chunk.toString('utf8').trim();
       if (text) {
+        if (/Parsed_gfxcapture/.test(text)) captureLost = true;
         this.lastError = text.split('\n').slice(-1)[0];
         this.log(`[h264 ${this.name}] ffmpeg: ${this.lastError}`);
       }
@@ -159,8 +161,10 @@ export class H264View extends EventEmitter {
     proc.on('exit', (code) => {
       if (this.proc === proc) this.proc = null;
       if (!this.wanted) return;
-      // No output at all (the backend doesn't work with the real capture): the hub picks another one.
-      if (!produced && code !== 0) this.emit('failed', this.lastError);
+      // No output at all. If the capture found no window (the game is closed, restarting or minimized),
+      // the view keeps retrying with the same backend; otherwise the backend doesn't work with the real
+      // capture and the hub picks another one.
+      if (!produced && code !== 0) this.emit(captureLost ? 'capture-lost' : 'failed', this.lastError);
       if (produced) this.restarts = 0;
       this.restarts += 1;
       this.restartTimer = setTimeout(() => {

@@ -341,11 +341,14 @@ function main() {
       for (const line of lines) {
         const [event, value] = line.trim().split(' ');
         if (event === 'restored') log(`[vídeo] la ventana del juego estaba ${value === 'maximized' ? 'maximizada' : 'minimizada'}: vuelve a su tamaño sin quitar el foco`);
+        // No window (the game closed or is restarting): the views wait for it rather than give up on the encoder.
+        if (event === 'gone') hub.windowGone();
         if (event === 'size') {
           // Crops are in window pixels and a running capture keeps its first size: the views follow the window.
           const [w, h] = value.split('x').map(Number);
           if (size && size !== value) log(`[vídeo] la ventana del juego cambió a ${value}: reinicio la captura`);
           hub.setWindowSize(w, h);
+          hub.windowBack();
           size = value;
         }
       }

@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Browser seats, video and sound for SADX Multiplayer: the room server, its CLI and the page.",
   "scripts": {
-    "test": "node test/smoke.mjs && node test/agent-cli-smoke.mjs"
+    "test": "node test/smoke.mjs && node test/agent-cli-smoke.mjs",
+    "test:video": "node test/video-recovery.mjs"
   },
   "optionalDependencies": {
     "werift": "0.24.4"

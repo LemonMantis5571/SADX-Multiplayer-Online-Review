@@ -162,6 +162,14 @@ a su tamaño normal sin quitar el foco si se minimiza (no dibuja) o se maximiza
 (SADX baja a unos 8 fps a 1920 × 1009), y la sala reinicia la captura si cambia
 de tamaño.
 
+**El vídeo vuelve solo.** Si la ventana desaparece (el juego se cierra, se cae o
+se reinicia), las vistas esperan a que vuelva y siguen con el mismo codificador;
+la página avisa «el vídeo vuelve solo» sobre el último cuadro. Un codificador
+solo se descarta si no da imagen durante 10 s con la ventana presente; si se
+descartan todos, se vuelven a probar todos al rato (10 s, luego hasta 60 s). Una
+vista que corre pero deja de dar cuadros 10 s se reinicia. Lo comprueba
+`npm run test:video`.
+
 ### Rendimiento
 
 Medido en la PC de pruebas (Ryzen con Radeon 780M integrada + RTX 3060 Ti), con un
@@ -307,6 +315,11 @@ node gateway/agent-cli.mjs test
 
 Las pruebas de humo usan el puerto 8199 (nunca el 8123 de una sala real) y
 `--no-game`, y cubren sala, puestos, pad, latido, espectadores y el CLI.
+
+`npm run test:video` (en `gateway/`, unos 40 s; necesita ffmpeg) comprueba que el
+vídeo vuelve solo: captura una ventana de prueba (`test/fixtures/fake-game.cs`,
+compilada con el C# que trae Windows), la cierra 15 s, la vuelve a abrir y la
+reinicia rápido, y exige que llegue vídeo cada vez sin cambiar de codificador.
 
 ## Puente del mod
 

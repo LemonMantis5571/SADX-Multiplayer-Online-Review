@@ -26,6 +26,7 @@ export function Stage() {
   const hasFrame = useStore(ui, (s) => s.hasFrame);
   const showingDirect = useStore(ui, (s) => s.direct.showing);
   const placeholder = useStore(ui, (s) => s.placeholder);
+  const videoWait = useStore(ui, (s) => s.videoWait);
   const crop = useStore(ui, (s) => s.video.crop);
   const stageName = useStore(ui, (s) => (s.game.online && s.game.stage !== undefined ? STAGES[s.game.stage] : null));
   const tierTag = useStore(ui, (s) => {
@@ -73,7 +74,16 @@ export function Stage() {
         {!hasFrame && (
           <div id="placeholder" className="flex max-w-sm flex-col items-center gap-4 p-6 text-center text-ink-subtle">
             <BrandMark className="size-10 animate-spin border-[5px] border-primary/25 border-t-primary" />
-            <p id="placeholderText" className="text-sm">{placeholder}</p>
+            <p id="placeholderText" className="text-sm">{videoWait ?? placeholder}</p>
+          </div>
+        )}
+        {hasFrame && videoWait && (
+          // The last picture stays frozen behind this until the room has video again.
+          <div id="videoWait" className="absolute inset-0 grid place-items-center bg-black/55 backdrop-blur-[2px]">
+            <div className="flex max-w-sm flex-col items-center gap-3 p-6 text-center text-ink-muted">
+              <BrandMark className="size-8 animate-spin border-[4px] border-primary/25 border-t-primary" />
+              <p className="text-sm">{videoWait}</p>
+            </div>
           </div>
         )}
 

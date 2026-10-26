@@ -42,6 +42,7 @@ export const ui = createStore({
   wsRtt: null as number | null,
   hasFrame: false,
   placeholder: initialCode ? 'Conectando con la partida…' : 'Escribe el código de la sala en «Sala».',
+  videoWait: null as string | null, // why the room has no picture right now (vstat), or null
   video: { codec: null as string | null, fps: 0, rtt: null as number | null, tier: null as string | null, player: null as string | null, crop: null as number[] | null },
   view: saved.get('ulm-view', 'mine') || 'mine',
   quality: saved.get('ulm-quality', 'auto') || 'auto',
@@ -100,7 +101,7 @@ export function attach(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement, sta
 const VIDEO_H264 = 1, VIDEO_JPEG = 2, AUDIO_OPUS = 3;
 const video = {
   codec: null as string | null, decoder: null as VideoDecoder | null, configured: null as string | null,
-  waitKey: true, timestamp: 0, shown: 0, since: performance.now(), jpegBusy: false,
+  waitKey: true, timestamp: 0, shown: 0, since: performance.now(), lastShownAt: 0, jpegBusy: false,
   crop: null as number[] | null,
   stats: { received: 0, decoded: 0, drawn: 0, skippedQueue: 0, maxQueue: 0 },
 };
@@ -155,6 +156,7 @@ function countFrame() {
   if (rtc.showing) return;
   video.shown += 1;
   const now = performance.now();
+  video.lastShownAt = now;
   if (now - video.since >= 1000) {
     patchVideo({ fps: Math.round((video.shown * 1000) / (now - video.since)) });
     video.shown = 0;
@@ -520,6 +522,9 @@ export function connect() {
       case 'vstat':
         if (msg.transport !== 'rtc') patchVideo({ rtt: msg.rtt }); // on a direct connection the page measures it (getStats)
         patchVideo({ tier: msg.tier });
+        setVideoWait(msg.wait);
+        // No frame for a while (game closed, network): the reading drops to 0 instead of keeping the last one.
+        if (!rtc.showing && ui.get().video.fps && performance.now() - video.lastShownAt > 1500) patchVideo({ fps: 0 });
         break;
       case 'vtier':
         // The next keyframe comes from another encoding (another quality, or someone else's screen).
@@ -554,6 +559,7 @@ export function connect() {
     resetDecoder();
     stopRtc(false); // the host dropped its side with the WebSocket
     setSeat(null, true);
+    setVideoWait(null);
     patchVideo({ fps: 0, rtt: null });
     if (ui.get().blocked) return; // turned away by the host: reconnecting would only bounce again
     setConn('desconectado', 'bad');
@@ -591,6 +597,16 @@ function closeSocket() {
   state.ws = null;
   if (ws) { try { ws.close(); } catch { /* ya cerrado */ } }
   ui.set({ connected: false });
+}
+
+const VIDEO_WAIT: Record<string, string> = {
+  window: 'El juego del anfitrión se está abriendo o se cerró: el vídeo vuelve solo.',
+  encoder: 'El anfitrión está preparando el vídeo…',
+};
+
+function setVideoWait(reason: unknown) {
+  const text = typeof reason === 'string' ? VIDEO_WAIT[reason] ?? null : null;
+  if (ui.get().videoWait !== text) ui.set({ videoWait: text });
 }
 
 function setSeat(seat: number | null, disconnected = false) {

@@ -23,6 +23,14 @@
 //
 // JPEG, for browsers without WebCodecs, is stop-and-wait: the next frame only
 // goes out once the previous one was acknowledged.
+//
+// Video must come back by itself from anything short of the room closing. A
+// capture with no window to capture (the game closed, restarting or minimized) is
+// not the encoder's fault: views wait for the window (the room's window keeper says
+// when it goes and comes back) and keep the encoder. An encoder is only given up
+// when it gives no picture while the window is there; when every one has been
+// given up, they are all tried again after a while. A view that runs but stops
+// giving frames is restarted.
 import { H264View } from './h264.mjs';
 import { chooseBackend } from './gpu.mjs';
 import { resolveFfmpeg, windowSelector } from './video.mjs';
@@ -41,6 +49,10 @@ const DOWNGRADE_DROPS = 2;      // skips within the window that move an 'auto' v
 const UPGRADE_AFTER_MS = 20000; // quiet time on the low level before trying the high one again
 const UPGRADE_MAX_MS = 180000;
 const IDLE_STOP_MS = 15000;     // a view nobody has watched for this long stops encoding
+const STALL_MS = 10000;         // a running view with no frame for this long is restarted
+const CAPTURE_GIVEUP_MS = 10000; // the capture failing this long with the window present: the backend's fault
+const RETRY_MIN_MS = 10000;     // every backend given up: try them all again after this...
+const RETRY_MAX_MS = 60000;     // ...doubling up to this
 
 /** The mod's split-screen layouts (splitscreen.cpp), as [x, y, w, h] fractions per player. */
 export function layoutFor(count, horizontal = false) {
@@ -87,6 +99,13 @@ export class VideoHub {
     this.backend = null;      // what encodes (lib/gpu.mjs), once chosen
     this.failedBackends = [];
     this.choosing = null;
+    this.retryTimer = null;   // all backends given up: when they are tried again
+    this.retryDelay = RETRY_MIN_MS;
+    this.windowPresent = true; // false while the window keeper reports no game window
+    this.waiting = new Set();  // views wanted while there is no window, started when it's back
+    this.captureLostSince = 0; // first capture failure of the current streak with the window present (0: none)
+    this.captureLostLast = 0;
+    this.lastCaptureLog = 0;
     this.stopped = false;
     this.timer = setInterval(() => this._evaluate(), 1000);
   }
@@ -104,6 +123,7 @@ export class VideoHub {
   /** The view's encoder, created on first use; started if it isn't running. */
   _ensure(name) {
     this.lastUse.set(name, Date.now());
+    if (!this.windowPresent) { this.waiting.add(name); return null; }
     if (!this.backend || !this.selector) return null;
     const def = this._definition(name);
     if (!def) return null;
@@ -111,8 +131,9 @@ export class VideoHub {
     if (!view) {
       view = new H264View({ name, ...def, selector: this.selector, ffmpeg: this.ffmpeg, log: this.log });
       view.window = { ...this.window };
-      view.on('frame', (au, key) => this._onFrame(name, au, key));
+      view.on('frame', (au, key) => { this.captureLostSince = 0; this._onFrame(name, au, key); });
       view.on('failed', (error) => this._backendFailed(error));
+      view.on('capture-lost', (error) => this._captureLost(name, error));
       this.views.set(name, view);
     }
     if (!view.running && !view.wanted) this.log(`[vídeo] empiezo a codificar «${name}»`);
@@ -122,16 +143,31 @@ export class VideoHub {
 
   /** Picks the encoder for this PC (once), then starts whatever viewers already wait for. */
   start() {
-    if (this.choosing || this.backend || this.stopped) return this.choosing;
+    if (this.choosing || this.backend || this.stopped || this.retryTimer) return this.choosing;
     this.choosing = chooseBackend(this.ffmpeg, { forced: this.forcedEncoder, skip: this.failedBackends, log: this.log })
+      .catch((error) => { this.log(`[vídeo] no pude elegir codificador: ${error.message}`); return null; })
       .then((backend) => {
         this.choosing = null;
         if (this.stopped) return;
-        if (!backend) { this.log('[vídeo] ningún codificador funciona en esta PC'); return; }
+        if (!backend) { this._retryAll(); return; }
         this.backend = backend;
+        this.retryDelay = RETRY_MIN_MS;
         for (const v of this.viewers.values()) if (v.codec === 'h264') this._route(v, true);
       });
     return this.choosing;
+  }
+
+  /** Every backend was given up (or none works yet): forget that and try them all again in a while. */
+  _retryAll(delay = this.retryDelay) {
+    if (this.retryTimer || this.stopped) return;
+    this.log(`[vídeo] ningún codificador dio imagen; vuelvo a probarlos todos en ${Math.round(delay / 1000)} s`);
+    this.retryDelay = Math.min(RETRY_MAX_MS, delay * 2);
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      this.failedBackends = [];
+      this.start();
+    }, delay);
+    this.retryTimer.unref?.();
   }
 
   /** The chosen backend gave no picture with the real capture: try the next one for every view. */
@@ -140,9 +176,56 @@ export class VideoHub {
     this.log(`[vídeo] ${this.backend.key} no funciona con la captura real (${error}); pruebo el siguiente`);
     this.failedBackends.push(this.backend.key);
     this.backend = null;
+    this.captureLostSince = 0;
     const running = [...this.views.entries()].filter(([, view]) => view.wanted).map(([name]) => name);
     for (const view of this.views.values()) view.stop();
     this.start()?.then(() => { for (const name of running) this._ensure(name); });
+  }
+
+  /**
+   * gfxcapture found nothing to capture. Normally the window is gone or minimized for a moment and the view
+   * just retries; only when it keeps failing with the window there is the backend's capture device at fault.
+   */
+  _captureLost(name, error) {
+    const now = Date.now();
+    if (now - this.lastCaptureLog > 30000) {
+      this.lastCaptureLog = now;
+      this.log(`[vídeo] «${name}» no encuentra la ventana del juego; reintento hasta que aparezca`);
+    }
+    if (!this.windowPresent) return;
+    // Only a streak counts: failures that stopped a while ago (nobody watched since) start a new one.
+    if (!this.captureLostSince || now - this.captureLostLast > CAPTURE_GIVEUP_MS) this.captureLostSince = now;
+    this.captureLostLast = now;
+    if (now - this.captureLostSince > CAPTURE_GIVEUP_MS) this._backendFailed(error);
+  }
+
+  /** The window keeper found no game window (closed or restarting): views wait for it instead of failing. */
+  windowGone() {
+    if (!this.windowPresent) return;
+    this.windowPresent = false;
+    this.captureLostSince = 0;
+    for (const [name, view] of this.views) {
+      if (!view.wanted) continue;
+      this.waiting.add(name);
+      view.stop();
+    }
+    this.log('[vídeo] no hay ventana del juego: el vídeo sigue en cuanto vuelva');
+  }
+
+  /** The game window is back: the waiting views start now, and given-up backends get another chance. */
+  windowBack() {
+    if (this.windowPresent) return;
+    this.windowPresent = true;
+    this.log('[vídeo] volvió la ventana del juego');
+    if (!this.backend && !this.choosing) {
+      if (this.retryTimer) { clearTimeout(this.retryTimer); this.retryTimer = null; }
+      this.failedBackends = [];
+      this.retryDelay = RETRY_MIN_MS;
+    }
+    const recent = [...this.waiting].filter((name) => Date.now() - (this.lastUse.get(name) || 0) < IDLE_STOP_MS);
+    this.waiting.clear();
+    if (this.backend) for (const name of recent) this._ensure(name);
+    else this.start()?.then(() => { for (const name of recent) this._ensure(name); });
   }
 
   get running() {
@@ -381,6 +464,8 @@ export class VideoHub {
         transport: v.conn.rtc?.connected ? 'rtc' : 'ws',
         rtt: v.rtt == null ? null : Math.round(v.rtt),
         drops: v.drops.length,
+        // Why no picture comes, for the page to say so: no game window (closed or restarting), or no encoder yet.
+        wait: !this.windowPresent ? 'window' : !this.backend && v.codec === 'h264' ? 'encoder' : null,
       });
     }
     // Views nobody watches stop encoding (one viewer moving to another view, or everyone leaving).
@@ -390,16 +475,30 @@ export class VideoHub {
         view.stop();
       }
     }
+    // Stalled views: running, but no frame for a while (a capture that hung, a window that stopped drawing).
+    for (const [name, view] of this.views) {
+      if (!view.wanted || !view.running || !this.windowPresent) continue;
+      if (now - Math.max(view.startedAt, view.lastFrameAt) > STALL_MS) {
+        // A game that stays frozen (its crash dialog, say) gets restarted every time, but logged once a minute.
+        if (now - (view.stallLoggedAt || 0) > 60000) {
+          view.stallLoggedAt = now;
+          this.log(`[vídeo] «${name}» lleva ${Math.round(STALL_MS / 1000)} s sin cuadros: la reinicio`);
+        }
+        view.restart(this.backend);
+      }
+    }
+    // Someone waits for H.264 and nothing encodes it: make sure an encoder is (being) chosen.
+    if (!this.backend && this.windowPresent && [...this.viewers.values()].some((v) => v.codec === 'h264')) this.start();
   }
 
   status() {
     return {
       running: this.running,
-      encoder: this.backend ? `${this.backend.encoder} (${this.backend.mode})` : this.choosing ? 'eligiendo…' : 'ninguno',
+      encoder: this.backend ? `${this.backend.encoder} (${this.backend.mode})` : this.choosing ? 'eligiendo…' : this.retryTimer ? 'reintentando' : 'ninguno',
       gpu: this.backend?.gpu ?? null,
       lastError: [...this.views.values()].map((view) => view.lastError).find(Boolean) ?? null,
       lastFrameAt: this.lastFrameAt || null,
-      window: this.window,
+      window: { ...this.window, present: this.windowPresent },
       views: Object.fromEntries([...this.views.entries()].map(([name, view]) => [name, view.status()])),
       split: this.split,
       screens: this.screens,
@@ -424,6 +523,7 @@ export class VideoHub {
   stop() {
     this.stopped = true;
     clearInterval(this.timer);
+    if (this.retryTimer) { clearTimeout(this.retryTimer); this.retryTimer = null; }
     this.viewers.clear();
     for (const view of this.views.values()) view.stop();
   }
