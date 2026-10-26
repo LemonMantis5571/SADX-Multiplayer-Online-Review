@@ -164,15 +164,17 @@ index cd05252..a70066f 100644
  FastFunctionHook<void, task*> Rd_Twinkle_h(0x61D150);
  FastFunctionHook<void, task*> dispBgTwinkle_h(0x61D1F0);
 diff --git a/source/patches/patch_sonic.cpp b/source/patches/patch_sonic.cpp
-index bfaa416..36707fd 100644
+index bfaa416..2083917 100644
 --- a/source/patches/patch_sonic.cpp
 +++ b/source/patches/patch_sonic.cpp
-@@ -16,6 +16,20 @@ FastFunctionHookPtr<TaskFuncPtr> SonicDirectAhead_h((intptr_t)0x493C70);
+@@ -16,6 +16,22 @@ FastFunctionHookPtr<TaskFuncPtr> SonicDirectAhead_h((intptr_t)0x493C70);
  FastFunctionHookPtr<TaskFuncPtr> SonicJiggle_h(0x4937B0);
  FastUsercallHookPtr<Bool(*)(playerwk* pwp, taskwk* twp, motionwk2* mwp), rEAX, rEAX, rEDI, stack4> Sonic_CheckInput_hook(0x495FA0);
  FastFunctionHookPtr<TaskFuncPtr> SonicTheHedgehog_h(0x49A9B0);
 +FastFunctionHookPtr<TaskFuncPtr> SonicDisplay_h(0x4948C0);
 +FastFunctionHookPtr<TaskFuncPtr> SonicDestruct_h(0x494860);
++FastFunctionHookPtr<TaskFuncPtr> MetalSonicAfterImage_h(0x4959A0);
++FastFunctionHookPtr<TaskFuncPtr> MetalSonicAfterImageDisplay_h(0x4946E0);
 +
 +// Metal Sonic: MetalSonicFlag is on while that player's Sonic runs (its init loads his textures), draws and is
 +// destroyed (which frees them); other players' Sonics see the flag as the game left it.
@@ -188,7 +190,7 @@ index bfaa416..36707fd 100644
  
  static void SonicHomingOnRings_m(taskwk* twp, motionwk2* mwp, playerwk* pwp)
  {
-@@ -227,11 +241,13 @@ static void __cdecl SonicTheHedgehog_r(task* tp)
+@@ -227,11 +243,13 @@ static void __cdecl SonicTheHedgehog_r(task* tp)
  	{
  		auto pnum = TASKWK_PLAYERID(tp->twp);
  		auto twp = tp->twp;
@@ -202,7 +204,7 @@ index bfaa416..36707fd 100644
  	}
  	else
  	{
-@@ -239,6 +255,20 @@ static void __cdecl SonicTheHedgehog_r(task* tp)
+@@ -239,6 +257,39 @@ static void __cdecl SonicTheHedgehog_r(task* tp)
  	}
  }
  
@@ -220,15 +222,36 @@ index bfaa416..36707fd 100644
 +	MetalSonicFlag = flag;
 +}
 +
++// Metal Sonic's after-images are tasks of their own, run and drawn outside his: they only exist for him, so the
++// flag is on while they run. With it off they drew Sonic's model with Metal's textures (crash setting a texture,
++// sonic.exe+0x78CDC9, once he ran fast enough to leave them).
++static void __cdecl MetalSonicAfterImage_r(task* tp)
++{
++	const char flag = MetalSonicFlag;
++	MetalSonicFlag = 1;
++	MetalSonicAfterImage_h.Original(tp);
++	MetalSonicFlag = flag;
++}
++
++static void __cdecl MetalSonicAfterImageDisplay_r(task* tp)
++{
++	const char flag = MetalSonicFlag;
++	MetalSonicFlag = 1;
++	MetalSonicAfterImageDisplay_h.Original(tp);
++	MetalSonicFlag = flag;
++}
++
  void patch_sonic_init()
  {
  	SonicHomingOnRings_h.Hook(SonicHomingOnRings_r);
-@@ -247,6 +277,8 @@ void patch_sonic_init()
+@@ -247,6 +298,10 @@ void patch_sonic_init()
  	SonicJiggle_h.Hook(SonicJiggle_r);
  	Sonic_CheckInput_hook.Hook(Sonic_CheckInput_r);
  	SonicTheHedgehog_h.Hook(SonicTheHedgehog_r);
 +	SonicDisplay_h.Hook(SonicDisplay_r);
 +	SonicDestruct_h.Hook(SonicDestruct_r);
++	MetalSonicAfterImage_h.Hook(MetalSonicAfterImage_r);
++	MetalSonicAfterImageDisplay_h.Hook(MetalSonicAfterImageDisplay_r);
  }
  
  RegisterPatch patch_sonic(patch_sonic_init);
