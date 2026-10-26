@@ -324,7 +324,7 @@ Para entrar directo a un nivel con cuatro personajes:
 `--level twinklepark --act 1 --multi 4 coop -p1 sonic -p2 tails -p3 knuckles -p4 amy`
 (con `--position x y z` aparecen en ese punto).
 
-Compilar el mod: `mod/build.ps1`, explicado en el [README de la raíz](../README.md#el-mod).
+Compilar el mod: `mod/build.ps1`, explicado en el [README de la raíz](../README.md#building-the-mod).
 
 ## Límites
 

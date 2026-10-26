@@ -4,7 +4,7 @@ SADX Online deja jugar Sonic Adventure DX a cuatro desde el navegador: la PC del
 corre el juego con el mod multijugador y una **sala** (servidor Node en `gateway/`) que reparte vídeo, sonido y
 mandos por un enlace público. Lo habitual que te pidan: instalar todo en la PC del usuario y dejarlo jugando.
 Para eso sigue los **Pasos** en orden; cada uno termina en una condición comprobable (**Hecho cuando**) y no
-se pasa al siguiente sin cumplirla. Qué es cada carpeta: [`README.md`](README.md#qué-hay-aquí). Detalles de la
+se pasa al siguiente sin cumplirla. Qué es cada carpeta: [`README.md`](README.md#repository-layout). Detalles de la
 sala, el vídeo y el CLI: [`gateway/README.md`](gateway/README.md).
 
 Todo es Windows. Los comandos son de PowerShell y, salvo que se diga otra cosa, se ejecutan desde la raíz del
@@ -23,7 +23,7 @@ repo. El CLI responde en JSON (con `--human`, en texto para personas).
 5. **La carpeta de SADX se toca solo con `setup`**, con el juego cerrado: guarda copia de lo que cambia en
    `<SADX>\sadx-online-backups\<fecha>`.
 6. **El juego sale de la copia de Steam del usuario**, convertida por él con el SADX Mod Installer.
-7. **El repo y sus releases son privados**: el mod original (Kell y Sora) no tiene licencia. Se quedan en
+7. **El repo y sus releases son privados**: la base del mod no tiene licencia (ver Agradecimientos en el README). Se quedan en
    GitHub, en este repo; el zip del mod no se comparte fuera.
 
 ## Pasos
@@ -189,7 +189,7 @@ powershell -ExecutionPolicy Bypass -File mod\build.ps1
 
 **Hecho cuando:** termina con `Mod:  …\dist\mods\sadx-multiplayer` y código de salida 0. Luego el paso 6:
 `setup` usa ese `dist\` (dice `compilado en esta PC`). Para volver a las releases, borra `dist\`. Qué hace el
-script, cómo publicar una release y cómo cambiar el código del original: [`README.md`](README.md#el-mod).
+script, cómo publicar una release y cómo cambiar la base del mod: [`README.md`](README.md#building-the-mod).
 
 ## Cambiar el código
 
