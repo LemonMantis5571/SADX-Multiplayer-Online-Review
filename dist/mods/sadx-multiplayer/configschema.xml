@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<ConfigSchema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.sonicretro.org">
+  <Groups>
+    <Group name="" display="General">
+      <Property name="SplitScreen" type="bool" defaultvalue="True" display="Enable Split Screen">
+        <HelpText>Toggle split screen in multiplayer.</HelpText>
+      </Property>
+      <Property name="HorizontalLayout" type="bool" defaultvalue="False" display="Horizontal Layout">
+        <HelpText>Split screen horizontally in two-player mode.</HelpText>
+      </Property>
+      <Property name="Indicator" type="bool" defaultvalue="False" display="Enable Indicators">
+        <HelpText>Toggle player position indicators.</HelpText>
+      </Property>
+    </Group>
+    <Group name="Cheats">
+      <Property name="InfiniteRingsP2" type="bool" defaultvalue="False" display="Infinite Rings (P2)" />
+      <Property name="InfiniteRingsP3" type="bool" defaultvalue="False" display="Infinite Rings (P3)" />
+      <Property name="InfiniteRingsP4" type="bool" defaultvalue="False" display="Infinite Rings (P4)" />
+      <Property name="InfiniteLivesP2" type="bool" defaultvalue="False" display="Infinite Lives (P2)" />
+      <Property name="InfiniteLivesP3" type="bool" defaultvalue="False" display="Infinite Lives (P3)" />
+      <Property name="InfiniteLivesP4" type="bool" defaultvalue="False" display="Infinite Lives (P4)" />
+    </Group>
+    <Group name="Netplay">
+      <Property name="DefaultAddress" type="string" defaultvalue="localhost" display="Default Address" />
+      <Property name="DefaultPort" type="int" defaultvalue="27015" minvalue="0" maxvalue="65535" display="Default Port" />
+    </Group>
+  </Groups>
+</ConfigSchema>

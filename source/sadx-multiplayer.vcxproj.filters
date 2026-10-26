@@ -1,0 +1,1002 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="menu_multi.cpp">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="menu.cpp">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dllmain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mod.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="splitscreen.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hud_multi.cpp">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="set.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="multiplayer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="testspawn.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="multiapi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sound.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="race.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="result.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hud_result.cpp">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="emeraldhunt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hud_emerald.cpp">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="milesrace.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fishing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hud_fishing.cpp">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="forcewk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hud_indicator.cpp">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hud_itembox.cpp">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="gravity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_big.cpp">
+      <Filter>Source Files\patches\figure</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_sonic.cpp">
+      <Filter>Source Files\patches\figure</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e102.cpp">
+      <Filter>Source Files\patches\figure</Filter>
+    </ClCompile>
+    <ClCompile Include="fog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="input.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="netplay.cpp">
+      <Filter>Source Files\netplay</Filter>
+    </ClCompile>
+    <ClCompile Include="packet.cpp">
+      <Filter>Source Files\netplay</Filter>
+    </ClCompile>
+    <ClCompile Include="game.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="timer.cpp">
+      <Filter>Source Files\netplay</Filter>
+    </ClCompile>
+    <ClCompile Include="camerafunc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_chaos0.cpp">
+      <Filter>Source Files\patches\bosses</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_boss_egm1.cpp">
+      <Filter>Source Files\patches\bosses</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_boss_egm2.cpp">
+      <Filter>Source Files\patches\bosses</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_amy.cpp">
+      <Filter>Source Files\patches\figure</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_knuckles.cpp">
+      <Filter>Source Files\patches\figure</Filter>
+    </ClCompile>
+    <ClCompile Include="menu_adventure.cpp">
+      <Filter>Source Files\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="collision.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_miles.cpp">
+      <Filter>Source Files\patches\figure</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_beach_pathcam.cpp">
+      <Filter>Source Files\patches\stg01_beach</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_beach_yurehasi.cpp">
+      <Filter>Source Files\patches\stg01_beach</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_beach_ao.cpp">
+      <Filter>Source Files\patches\stg01_beach</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_beach_wavebg.cpp">
+      <Filter>Source Files\patches\stg01_beach</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_windy_broobj.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_windy_poline.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_windy_torin.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_twinkle_door.cpp">
+      <Filter>Source Files\patches\stg03_twinkle</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_twinkle_shutter.cpp">
+      <Filter>Source Files\patches\stg03_twinkle</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_twinkle_go_round.cpp">
+      <Filter>Source Files\patches\stg03_twinkle</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_hw_pathcam.cpp">
+      <Filter>Source Files\patches\stg04_highway</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_heli.cpp">
+      <Filter>Source Files\patches\stg04_highway</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_highway_turnasi.cpp">
+      <Filter>Source Files\patches\stg04_highway</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_windy_torout.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_mountain_raft.cpp">
+      <Filter>Source Files\patches\stg05_mountain</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_mountain_yougan.cpp">
+      <Filter>Source Files\patches\stg05_mountain</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_mountain_magmacnt.cpp">
+      <Filter>Source Files\patches\stg05_mountain</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_cannon_cmn.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_cannon_h2.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_cannon_s.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_connect.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_crane.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_cyl_cmn.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_elevator.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_ocm.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_sinkrane.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_talap0.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_wing.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ruin_mirror.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ruin_pathcam.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ruin_reverse.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ruin_snake.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ruin_swdoor_x.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ruin_tatearuki.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_rockroll.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_snow.cpp">
+      <Filter>Source Files\patches\stg08_icecap</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_icecap_futa..cpp">
+      <Filter>Source Files\patches\stg08_icecap</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_fanfan.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_hasigo.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_hosin.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_kowaresoniczo.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_pathcam.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_conveyorbelt.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_elevator2.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_fun.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_hallgate.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_pathcam.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_spintube_big.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_spintube_medium.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_spintube_small.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_ukishima.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_elevator.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_rainbowdoor.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_finalegg_uptarget.cpp">
+      <Filter>Source Files\patches\stg10_finalegg</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_skydeck.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_highway.cpp">
+      <Filter>Source Files\patches\stg04_highway</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_cargo.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_cargocontainer.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_cargotop.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_gate.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_haguruma.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_kaitenashiba.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_crane.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_cargostart.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_bridge.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_kaitendai.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_elevator.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_kaitenkey.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_sen.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shelter_ukijima.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_hotshelter.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_mountain_e104missile.cpp">
+      <Filter>Source Files\patches\stg05_mountain</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_mountain_e104.cpp">
+      <Filter>Source Files\patches\stg05_mountain</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_hot_e105missile.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_hot_e105.cpp">
+      <Filter>Source Files\patches\stg12_hotshelter</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_windy_e103missile.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_windy_e103.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_cart.cpp">
+      <Filter>Source Files\patches\enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_gachapon.cpp">
+      <Filter>Source Files\patches\enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_pondskater.cpp">
+      <Filter>Source Files\patches\enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_robo.cpp">
+      <Filter>Source Files\patches\enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_sai.cpp">
+      <Filter>Source Files\patches\enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_aircraft.cpp">
+      <Filter>Source Files\patches\enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_mountain_palley.cpp">
+      <Filter>Source Files\patches\stg05_mountain</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_twinkle_coaster.cpp">
+      <Filter>Source Files\patches\stg03_twinkle</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_twinkle_catapult.cpp">
+      <Filter>Source Files\patches\stg03_twinkle</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_ef_sky_scope.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_icecap_icicle.cpp">
+      <Filter>Source Files\patches\stg08_icecap</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_hebigate.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_suimen.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_water.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_sky_lever.cpp">
+      <Filter>Source Files\patches\stg06_skydeck</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_cart_stopper.cpp">
+      <Filter>Source Files\patches\stg03_twinkle</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_windy_pathact.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_shat.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_fountain.cpp">
+      <Filter>Source Files\patches\stg04_highway</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_e101.cpp">
+      <Filter>Source Files\patches\bosses</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_e101_r.cpp">
+      <Filter>Source Files\patches\bosses</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ruin_swdoor.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="teleport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_windy_turibasi.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="o_casino_telepot.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_twinkle_barrel.cpp">
+      <Filter>Source Files\patches\stg03_twinkle</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_windy_rotateobj.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_alo_obake_head.cpp">
+      <Filter>Source Files\patches\chao</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_alo_fruit.cpp">
+      <Filter>Source Files\patches\chao</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_albhv_dakko.cpp">
+      <Filter>Source Files\patches\chao</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_al_camera.cpp">
+      <Filter>Source Files\patches\chao</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_al_minimal.cpp">
+      <Filter>Source Files\patches\chao</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_alo_xybutton.cpp">
+      <Filter>Source Files\patches\chao</Filter>
+    </ClCompile>
+    <ClCompile Include="FastFunctionHook.cpp">
+      <Filter>Source Files\classes</Filter>
+    </ClCompile>
+    <ClCompile Include="RegisterPatch.cpp">
+      <Filter>Source Files\classes</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_crane.cpp">
+      <Filter>Source Files\patches\stg04_highway</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_mountain_exrock.cpp">
+      <Filter>Source Files\patches\stg05_mountain</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e102shot.cpp">
+      <Filter>Source Files\patches\figure</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_spinna.cpp">
+      <Filter>Source Files\patches\enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_e_buyon.cpp">
+      <Filter>Source Files\patches\enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_mudout.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_casino.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_tikal.cpp">
+      <Filter>Source Files\patches\figure</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_beach_jumpraft.cpp">
+      <Filter>Source Files\patches\stg01_beach</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_chaos_misc.cpp">
+      <Filter>Source Files\patches\figure</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_beach.cpp">
+      <Filter>Source Files\patches\stg01_beach</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_windy.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_twinkle.cpp">
+      <Filter>Source Files\patches\stg03_twinkle</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_mountain.cpp">
+      <Filter>Source Files\patches\stg05_mountain</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_ruin.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_beach_land_texanim.cpp">
+      <Filter>Source Files\patches\stg01_beach</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ruin_texanim.cpp">
+      <Filter>Source Files\patches\stg07_ruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_ta_twinkle.cpp">
+      <Filter>Source Files\patches\stg03_twinkle</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_windy_leaf.cpp">
+      <Filter>Source Files\patches\stg02_windy</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_c_ss_scenechanger.cpp">
+      <Filter>Source Files\patches\adv00_stationsquare</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ss_land_texanim.cpp">
+      <Filter>Source Files\patches\adv00_stationsquare</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_mr.cpp">
+      <Filter>Source Files\patches\adv02_mysticruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_mysticruin_torokko.cpp">
+      <Filter>Source Files\patches\adv02_mysticruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_past.cpp">
+      <Filter>Source Files\patches\adv03_past</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_c_past_scenechanger.cpp">
+      <Filter>Source Files\patches\adv03_past</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_bigkaeru.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_colli_space.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_eggrob.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_enemy.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_flicky.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_mirror.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_baloon.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_cmndushring.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_eme.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_frog.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_itembox.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_jumppanel.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_kaos_eme.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_releasebox.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_rocket.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_savepoint.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_spring.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_tikal_hint.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_togedai.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_rd_sandboard.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_ring.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_sakana.cpp">
+      <Filter>Source Files\patches\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_draw.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_game.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_extra.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_pathtask.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_player.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_land.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_ef_barrier.cpp">
+      <Filter>Source Files\patches\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_ef_spark.cpp">
+      <Filter>Source Files\patches\effects</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_seqctrl.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_bumper.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_emergency.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_flipper.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_tuuka.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_startshot.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_pinball.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_roll.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_jdai.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_ec_scenechanger.cpp">
+      <Filter>Source Files\patches\adv01_EggCarrier</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_ec_egglift.cpp">
+      <Filter>Source Files\patches\adv01_EggCarrier</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_ec_monorail.cpp">
+      <Filter>Source Files\patches\adv01_EggCarrier</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_boss_chaos4.cpp">
+      <Filter>Source Files\patches\bosses</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_boss_chaos6.cpp">
+      <Filter>Source Files\patches\bosses</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_mysticruin_lock.cpp">
+      <Filter>Source Files\patches\adv02_mysticruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_mr_common.cpp">
+      <Filter>Source Files\patches\adv02_mysticruin</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_ss_common.cpp">
+      <Filter>Source Files\patches\adv00_stationsquare</Filter>
+    </ClCompile>
+    <ClCompile Include="patch_event.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_upgrades.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_casino_shakehand.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_obz.cpp">
+      <Filter>Source Files\patches\stg01_beach</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_sm_tornade.cpp">
+      <Filter>Source Files\patches\shooting</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patches_npcs.cpp">
+      <Filter>Source Files\patches</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_sm_characters.cpp">
+      <Filter>Source Files\patches\shooting</Filter>
+    </ClCompile>
+    <ClCompile Include="patch_o_ss_card.cpp">
+      <Filter>Source Files\patches\adv00_stationsquare</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_ball.cpp">
+      <Filter>Source Files\patches\stg09_casino</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_boss_egm3.cpp">
+      <Filter>Source Files\patches\bosses</Filter>
+    </ClCompile>
+    <ClCompile Include="patches\patch_o_mr_chgcave.cpp">
+      <Filter>Source Files\patches\adv02_mysticruin</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="camera.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="framework.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="mod.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="sadx_utils.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="splitscreen.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="hud_multi.h">
+      <Filter>Header FIles\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="menu.h">
+      <Filter>Header FIles\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="menu_multi.h">
+      <Filter>Header FIles\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="d3d8vars.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="set.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="multiplayer.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="testspawn.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\multiapi.h">
+      <Filter>Header FIles\include</Filter>
+    </ClInclude>
+    <ClInclude Include="sound.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="race.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="result.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="hud_result.h">
+      <Filter>Header FIles\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="emeraldhunt.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="milesrace.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="fishing.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="hud_fishing.h">
+      <Filter>Header FIles\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="patches\patch_bigkaeru.h">
+      <Filter>Header FIles\patches</Filter>
+    </ClInclude>
+    <ClInclude Include="forcewk.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="hud_indicator.h">
+      <Filter>Header FIles\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="gravity.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="fog.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="input.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="netplay.h">
+      <Filter>Header FIles\netplay</Filter>
+    </ClInclude>
+    <ClInclude Include="packet.h">
+      <Filter>Header FIles\netplay</Filter>
+    </ClInclude>
+    <ClInclude Include="timer.h">
+      <Filter>Header FIles\netplay</Filter>
+    </ClInclude>
+    <ClInclude Include="camerafunc.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="VariableHook.hpp">
+      <Filter>Header FIles\classes</Filter>
+    </ClInclude>
+    <ClInclude Include="GameText.hpp">
+      <Filter>Header FIles\classes</Filter>
+    </ClInclude>
+    <ClInclude Include="menu_adventure.h">
+      <Filter>Header FIles\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="collision.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="event.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="teleport.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="FastFunctionHook.hpp">
+      <Filter>Header FIles\classes</Filter>
+    </ClInclude>
+    <ClInclude Include="hde32.h">
+      <Filter>Header FIles\classes</Filter>
+    </ClInclude>
+    <ClInclude Include="RegisterPatch.hpp">
+      <Filter>Header FIles\classes</Filter>
+    </ClInclude>
+    <ClInclude Include="hud_emerald.h">
+      <Filter>Header FIles\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="game.h">
+      <Filter>Header FIles</Filter>
+    </ClInclude>
+    <ClInclude Include="patches\patch_e_cart.h">
+      <Filter>Header Files\patches\enemy</Filter>
+    </ClInclude>
+    <ClInclude Include="patches\patch_o_sky_cyl_cmn.h">
+      <Filter>Header Files\patches\stg06_skydeck</Filter>
+    </ClInclude>
+    <ClInclude Include="hud_itembox.h">
+      <Filter>Header FIles\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="patches\patch_player.h">
+      <Filter>Header Files\patches\figure</Filter>
+    </ClInclude>
+    <ClInclude Include="patches\pinball.h">
+      <Filter>Header Files\patches\stg09_casino</Filter>
+    </ClInclude>
+    <ClInclude Include="patches\patches_egm2.h">
+      <Filter>Header Files\patches</Filter>
+    </ClInclude>
+    <ClInclude Include="patches\chaos_common.h">
+      <Filter>Header Files\patches</Filter>
+    </ClInclude>
+    <ClInclude Include="patches\patch_sm_tornade.h">
+      <Filter>Header Files\patches\shooting</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header FIles">
+      <UniqueIdentifier>{56f53c80-d906-4456-a067-cd34f6124b33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{faefacd9-04d6-4834-aa7c-a6f104e4eb1e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\gui">
+      <UniqueIdentifier>{25de92dc-4f93-442a-bf74-5037f998a674}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header FIles\gui">
+      <UniqueIdentifier>{5a4890f9-adbc-4a33-bc9f-abe98eedc69e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header FIles\include">
+      <UniqueIdentifier>{fead6788-8f1c-4b08-98a7-c22b00686774}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header FIles\classes">
+      <UniqueIdentifier>{34326808-c3dc-4006-8538-7a1a518e93d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\netplay">
+      <UniqueIdentifier>{e3a1b93c-f944-426a-b922-707b7b85d8be}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header FIles\netplay">
+      <UniqueIdentifier>{fbedaab8-05f5-4755-8346-ba4688365961}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\classes">
+      <UniqueIdentifier>{a87a1ec8-1c52-4395-8bf3-e110f7cea8f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches">
+      <UniqueIdentifier>{f7f1aa64-91c4-404c-b268-0b44e95f29b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\figure">
+      <UniqueIdentifier>{e38cc25c-b522-4b83-8bbb-f8b0ab72ed79}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\bosses">
+      <UniqueIdentifier>{7d85d775-a2ac-429b-9e63-1731455402c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg01_beach">
+      <UniqueIdentifier>{fa93a4ab-6d25-4187-8219-c4b8a16950c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg02_windy">
+      <UniqueIdentifier>{785b7423-e251-42f3-be33-2aa0ecd8dc80}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg03_twinkle">
+      <UniqueIdentifier>{50eb0df9-6a5c-4494-9fc4-b7926ee8ac1d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg04_highway">
+      <UniqueIdentifier>{213d5d93-e5a0-440b-8ced-54a22c57512a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg05_mountain">
+      <UniqueIdentifier>{55f8f0a8-91ea-410b-bad6-2273d72b29e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg06_skydeck">
+      <UniqueIdentifier>{c36bc248-2394-411b-89a3-325bf0d30c16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg07_ruin">
+      <UniqueIdentifier>{e27f5109-41c4-49ae-a317-12176de7b244}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg08_icecap">
+      <UniqueIdentifier>{13846364-408d-4384-9acb-665387784b33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg09_casino">
+      <UniqueIdentifier>{639de8cb-0a52-418b-8459-821e02fb1c47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg10_finalegg">
+      <UniqueIdentifier>{8ec3b469-24cf-4081-a0ee-8644c9279df2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\stg12_hotshelter">
+      <UniqueIdentifier>{3fb45c08-d3db-4376-83e0-9aac412d0e58}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\enemy">
+      <UniqueIdentifier>{711f2f4d-0024-4a9b-aa32-634b16c23a18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\chao">
+      <UniqueIdentifier>{b5270be9-68fe-4ae8-b50e-0422f75b68ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\patches">
+      <UniqueIdentifier>{25a58ace-4839-4bc1-ade4-5d673fc39e17}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\patches\enemy">
+      <UniqueIdentifier>{81c5c565-ce1e-4972-955b-3c35d5358c64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\patches\stg06_skydeck">
+      <UniqueIdentifier>{97885f92-1a5f-4994-97dd-6079a3b042b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\adv00_stationsquare">
+      <UniqueIdentifier>{22807ce7-f84a-4061-9e76-b82e0a6cb1c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\adv02_mysticruin">
+      <UniqueIdentifier>{d2b5e976-c5b7-49b8-9b49-bd53438deb5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\adv03_past">
+      <UniqueIdentifier>{92ca4548-7960-4041-8983-19cff790795d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\patches\figure">
+      <UniqueIdentifier>{6c44c21e-4233-448c-87fc-b8429478c58f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\objects">
+      <UniqueIdentifier>{da61bec8-0ec8-47a8-ad8b-8d3af782461d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\effects">
+      <UniqueIdentifier>{23a063bc-e902-4ed5-b541-e6bdc00e6577}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\patches\stg09_casino">
+      <UniqueIdentifier>{0118b7ff-c798-4284-87a9-26e1ce1a00e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\adv01_EggCarrier">
+      <UniqueIdentifier>{90713213-38b2-4198-95ab-6164b739f2f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\patches\shooting">
+      <UniqueIdentifier>{e543ff9e-13fa-43b1-b804-13feb24ac110}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\patches\shooting">
+      <UniqueIdentifier>{bebf5794-e709-4cd0-a6ab-d53d72f02545}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

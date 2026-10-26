@@ -1,0 +1,14 @@
+*            text=auto
+
+*.sln        text eol=crlf
+*.csproj     text eol=crlf
+*.vcxproj    text eol=crlf
+*.filters    text eol=crlf
+
+#*.sln       merge=binary
+#*.csproj    merge=binary
+#*.vcxproj   merge=binary
+#*.filters   merge=binary
+# SADX Online launchers and scripts run by cmd.exe / Windows PowerShell
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
