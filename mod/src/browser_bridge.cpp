@@ -7,15 +7,18 @@
 #endif
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <shellapi.h>
 #include "json.hpp"
 #include "audio_tap.h"
+#include "cs/cs.h"
 #include "browser_bridge.h"
 
 namespace browser_bridge
 {
 	namespace
 	{
-		constexpr uint16_t Port = 27016;
+		constexpr uint16_t DefaultPort = 27016;
+		uint16_t Port = DefaultPort; // --bridge-port N on the game's command line: another instance beside a room's
 		constexpr ULONGLONG TimeoutMs = 900; // a seat whose state isn't renewed goes neutral
 
 		struct BrowserPad
@@ -125,9 +128,12 @@ namespace browser_bridge
 			{
 				nlohmann::json player = {
 					{"seat", i + 1},
-					// Metal Sonic plays as Sonic in the mod (multiplayer.cpp); the page still shows him as himself.
-					{"character", multiplayer::IsMetalSonic(i) ? static_cast<int>(Characters_MetalSonic) : multiplayer::GetCharacter(i)},
+					// Metal Sonic and the Counter-Strike soldiers play as Sonic in the mod (multiplayer.cpp); the page
+					// still shows them as themselves.
+					{"character", cs::GetCharacter(i) >= 0 ? cs::GetCharacter(i)
+						: multiplayer::IsMetalSonic(i) ? static_cast<int>(Characters_MetalSonic) : multiplayer::GetCharacter(i)},
 					{"browserInput", pads[i].active},
+					{"score", GetEnemyScoreM(i)},
 					{"inputAgeMs", pads[i].active ? static_cast<int>(GetTickCount64() - pads[i].lastUpdate) : -1}
 				};
 				// This player's part of the window (fractions), so the gateway can stream it on its own.
@@ -154,6 +160,20 @@ namespace browser_bridge
 
 	void Init()
 	{
+		int argc = 0;
+		if (LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc))
+		{
+			for (int i = 1; i + 1 < argc; ++i)
+			{
+				if (!wcscmp(argv[i], L"--bridge-port"))
+				{
+					const int port = _wtoi(argv[i + 1]);
+					if (port > 0 && port < 65536) Port = static_cast<uint16_t>(port);
+				}
+			}
+			LocalFree(argv);
+		}
+
 		WSADATA data{};
 		const int startup = WSAStartup(MAKEWORD(2, 2), &data);
 		if (startup != 0)

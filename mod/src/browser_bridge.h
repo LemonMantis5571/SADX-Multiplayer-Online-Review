@@ -5,7 +5,7 @@
 // for the game's state (stage, characters, split-screen layout) and its sound (audio_tap) on that port.
 namespace browser_bridge
 {
-	// Binds 127.0.0.1:27016 (from the mod's Init).
+	// Binds 127.0.0.1:27016, or the port after --bridge-port on the command line (from the mod's Init).
 	void Init();
 
 	// Closes the socket (from the mod's OnExit).

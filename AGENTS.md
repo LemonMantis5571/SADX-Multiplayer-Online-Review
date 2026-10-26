@@ -22,7 +22,8 @@ repo. El CLI responde en JSON (con `--human`, en texto para personas).
    sala, enlace y juego quedan cerrados.
 5. **La carpeta de SADX se toca solo con `setup`**, con el juego cerrado: guarda copia de lo que cambia en
    `<SADX>\sadx-online-backups\<fecha>`.
-6. **El juego sale de la copia de Steam del usuario**, convertida por él con el SADX Mod Installer.
+6. **Los juegos salen de las copias de Steam del usuario**: SADX, convertido por él con el SADX Mod Installer,
+   y Counter-Strike 1.6 para los soldados. El repo y las releases no traen archivos de ningún juego.
 7. **El repo y sus releases son privados**: la base del mod no tiene licencia (ver Agradecimientos en el README). Se quedan en
    GitHub, en este repo; el zip del mod no se comparte fuera.
 
@@ -33,8 +34,9 @@ repo. El CLI responde en JSON (con `--human`, en texto para personas).
 - Windows 10 versión 2004 o más nuevo: `[Environment]::OSVersion.Version` con `Build` ≥ 19041.
 - Sonic Adventure DX comprado en Steam e instalado.
 - Una cuenta de GitHub con acceso a `LemonMantis5571/SADX-Multiplayer-Online` (repo privado).
+- Opcional: Counter-Strike (el 1.6, app 10 de Steam) en su cuenta, para los soldados (paso 7).
 
-**Hecho cuando:** el build es ≥ 19041 y el usuario confirmó las otras dos.
+**Hecho cuando:** el build es ≥ 19041 y el usuario confirmó SADX y GitHub (y dijo si tiene Counter-Strike).
 
 ### 2. Herramientas
 
@@ -123,16 +125,40 @@ node gateway/agent-cli.mjs setup --sadx "$sadx" --human
 `setup` baja el mod de la última release del repo (con `gh`; si compilaste el mod, usa `dist\`), lo instala en
 `<SADX>\mods\sadx-multiplayer`, lo activa en el perfil del Mod Loader con los ajustes que necesita el stream
 (ventana de 1280 × 960, Direct3D 9, sin pausa al perder el foco), quita `sadx-frame-limit`, recuerda dónde
-está `sonic.exe`, elige el codificador de vídeo de la GPU e instala `werift` (conexión directa, opcional).
-Cada línea empieza con `ok` (hecho) o `falta` (qué falta y cómo resolverlo). Resuelve cada `falta` y repite
-`setup`: no rehace lo que ya está.
+está `sonic.exe`, elige el codificador de vídeo de la GPU, instala `werift` (conexión directa, opcional) y
+busca Counter-Strike 1.6 (paso 7). Cada línea empieza con `ok` (hecho), `falta` (qué falta y cómo
+resolverlo) u `opcional` (se juega sin eso). Resuelve cada `falta` y repite `setup`: no rehace lo que ya está.
 
 Empieza sin `--light`. Si luego el juego va a tirones (gráfica integrada floja), repite con `--light`
 (ventana de 960 × 720).
 
 **Hecho cuando:** la salida no tiene ninguna línea `falta` y termina en `Listo. Para jugar: SADX-Online.cmd`.
 
-### 7. Jugar
+### 7. Counter-Strike (opcional)
+
+Entre los personajes hay ocho soldados de Counter-Strike: Phoenix, Elite Crew, Arctic y Guerilla (T); GIGN,
+GSG-9, SAS y SEAL (CT). Corren y saltan como Sonic y pelean con armas: rifle (AK-47 o M4A1), AWP, Desert
+Eagle, cuchillo y granadas HE. Sus modelos y sonidos salen del Counter-Strike 1.6 del usuario. Sin él, los
+soldados son maniquíes de cajas, mudos, con las mismas armas.
+
+Si `setup` dio `ok    Counter-Strike 1.6: <carpeta>`, este paso ya está. Si dio
+`opcional Counter-Strike 1.6…`, pregúntale al usuario si quiere los soldados con su aspecto real:
+
+1. Si tiene Counter-Strike en su cuenta de Steam, que lo instale: `Start-Process steam://install/10` abre el
+   diálogo de instalación de Steam; él lo confirma. Si no lo tiene, lo compra él en Steam; no lo bajes de
+   ningún otro sitio.
+2. Con la descarga terminada, repite el paso 6. `setup` lo busca en todas las bibliotecas de Steam
+   (`<biblioteca>\steamapps\common\Half-Life\cstrike`). Si está instalado en otro sitio, pásale la carpeta
+   `Half-Life` (la que tiene `cstrike` y `valve` dentro):
+   `node gateway/agent-cli.mjs setup --sadx "$sadx" --cstrike "<carpeta Half-Life>" --human`.
+
+`setup` guarda esa carpeta en `<SADX>\mods\sadx-multiplayer\sadx-online.ini` (`[CounterStrike]`, `Path=`); el
+mod la lee al arrancar el juego. Al entrar a un nivel con un soldado, `<SADX>\mods\.modloader\SADXModLoader.log`
+dice `[CS] Counter-Strike folder: <carpeta>` y `[CS] models\player\<kit>\<kit>.mdl loaded`.
+
+**Hecho cuando:** `setup` da `ok    Counter-Strike 1.6: <carpeta>`, o el usuario dijo que no lo quiere.
+
+### 8. Jugar
 
 ```powershell
 node gateway/agent-cli.mjs up --human
@@ -156,13 +182,15 @@ la ventana del juego: míralo.
 
 Dile al usuario: pasa el enlace a sus amigos (cada uno elige un puesto del 2 al 4 en la página; el resto
 mira), él juega como jugador 1 con el teclado o mando de la PC (ese puesto es siempre suyo), el sonido se activa en la página con 🔊 o la tecla M, y la
-ventana del juego no se minimiza (la sala la vuelve a abrir si pasa). Para cerrar: el paso 8, o doble clic en
-`SADX-Online-cerrar.cmd`.
+ventana del juego no se minimiza (la sala la vuelve a abrir si pasa). Los soldados de Counter-Strike se eligen
+como cualquier personaje (panel del anfitrión, o "Quiero ser" en la página): X dispara (con el rifle, mantener
+es ráfaga), B cambia de arma, Y lanza una granada (tres, recupera una cada diez segundos) y A salta; la página
+muestra esas teclas a quien juega con uno. Para cerrar: el paso 9, o doble clic en `SADX-Online-cerrar.cmd`.
 
 **Hecho cuando:** `doctor` da `gateway` y `sadxMod` en `ok`, la captura muestra la pantalla dividida y el
 usuario tiene el enlace.
 
-### 8. Cerrar
+### 9. Cerrar
 
 ```powershell
 node gateway/agent-cli.mjs down
@@ -175,7 +203,7 @@ node gateway/agent-cli.mjs down
 
 **Actualizar:** con el juego cerrado, `git pull` y el paso 6 (instala la release nueva del mod si la hay).
 
-**Uso diario sin agente:** `SADX-Online.cmd` (paso 7) y `SADX-Online-cerrar.cmd` (paso 8), en la raíz del repo.
+**Uso diario sin agente:** `SADX-Online.cmd` (paso 8) y `SADX-Online-cerrar.cmd` (paso 9), en la raíz del repo.
 
 ## Compilar el mod
 
@@ -217,6 +245,8 @@ script, cómo publicar una release y cómo cambiar la base del mod: [`README.md`
 | Vídeo negro o congelado | Ventana minimizada, o ningún codificador | Restaura la ventana; `doctor` (`checks.video.error`) |
 | SADX se cayó (aviso `SADX has crashed at …`) | Error del juego o del mod | Al cerrar el aviso, la sala lo reabre (hasta 3 veces en 2 min). El informe está en `<SADX>\CrashDump\<fecha>\*_extra_info_*.txt` (dirección, nivel, posiciones): pásaselo al usuario |
 | Los amigos no oyen | El sonido empieza apagado en el navegador | 🔊 o tecla M en la página |
+| Los soldados son cajas y no suenan | Counter-Strike 1.6 sin instalar, o `sadx-online.ini` sin `Path` | Paso 7; reabre el juego (`down` y `up`) |
+| El log dice `[CS] … missing` | La carpeta no es la de Half-Life, o le faltan archivos | `--cstrike` con la carpeta que tiene `cstrike`; en Steam, "Verificar integridad" de Counter-Strike |
 | `build.ps1`: `Filename too long` | Ruta del repo demasiado larga | Clonar en una ruta corta (paso 4) |
 | `build.ps1`: `conflict with the patch` | Cambios a mano en el submódulo | `git -C mod/sadx-multiplayer checkout -- .` y repetir |
 | PowerShell no deja ejecutar el script | Política de ejecución | `powershell -ExecutionPolicy Bypass -File …` |

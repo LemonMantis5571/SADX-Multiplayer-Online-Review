@@ -16,7 +16,9 @@ export const LEVELS = [
   'stationsquare', 'eggcarrieroutside', 'eggcarrierinside', 'mysticruins', 'past', 'twinklecircuit',
   'skychase1', 'skychase2', 'sandhill', 'ssgarden', 'ecgarden', 'mrgarden', 'chaorace',
 ];
-export const CHARACTERS = ['sonic', 'tails', 'knuckles', 'amy', 'big', 'gamma', 'eggman', 'tikal', 'metalsonic'];
+export const CHARACTERS = ['sonic', 'tails', 'knuckles', 'amy', 'big', 'gamma', 'eggman', 'tikal', 'metalsonic',
+  // Counter-Strike soldiers on Sonic's movement (mod/src/cs), with models and sounds from the host's CS 1.6
+  'cs_terror', 'cs_leet', 'cs_arctic', 'cs_guerilla', 'cs_gign', 'cs_gsg9', 'cs_sas', 'cs_urban'];
 export const MODES = ['coop', 'battle'];
 
 export const DEFAULT_CONFIG = {

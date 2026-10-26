@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
-import { CHARACTER_IDS, EMOTES, characterName } from '@/lib/game';
+import { CHARACTER_IDS, EMOTES, characterName, isSoldier } from '@/lib/game';
 import {
   benched, characterOf, claimSeat, hooks, joinRoom, measureLatency, saveName, sendChat, sendEmote, setDirect, setWant, ui,
 } from './room';
@@ -219,11 +219,26 @@ const KEYS: [string[], string][] = [
   [['M'], 'sonido del juego'],
 ];
 
+// A Counter-Strike soldier's buttons: X fires (held, the rifle keeps firing; an empty clip reloads), B changes
+// weapon (rifle, AWP, Desert Eagle, knife), Y throws an HE grenade (three, one back every ten seconds).
+const SOLDIER_KEYS: [string[], string][] = [
+  [['W', 'A', 'S', 'D'], 'moverse'],
+  [['J'], 'A · saltar'],
+  [['U'], 'X · disparar (mantén con el rifle)'],
+  [['K'], 'B · cambiar de arma'],
+  [['I'], 'Y · granada'],
+  ...KEYS.slice(4),
+];
+
 function KeysCard() {
+  const soldier = useStore(ui, (x) => {
+    const list = x.game.online && Array.isArray(x.game.characters) ? x.game.characters : [];
+    return x.seat ? isSoldier(list[x.seat - 1]) : false;
+  });
   return (
-    <Section title="Controles">
+    <Section title={soldier ? 'Controles · soldado' : 'Controles'}>
       <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5 text-[13px]">
-        {KEYS.map(([keys, label]) => (
+        {(soldier ? SOLDIER_KEYS : KEYS).map(([keys, label]) => (
           <div key={label} className="contents">
             <div className="flex gap-1">{keys.map((k) => <Kbd key={k}>{k}</Kbd>)}</div>
             <div className="text-ink-muted">{label}</div>

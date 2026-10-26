@@ -57,6 +57,14 @@ la misma sala. Para reiniciar solo la sala sin cortar el enlace ni el juego:
 3. `cloudflared` para el enlace público:
    `winget install --id Cloudflare.cloudflared --exact`. Las personas que entran
    solo necesitan el navegador.
+4. Opcional, Counter-Strike 1.6 (Steam, `steam://install/10`) para los ocho
+   soldados (`cs_terror`, `cs_leet`, `cs_arctic`, `cs_guerilla`, `cs_gign`,
+   `cs_gsg9`, `cs_sas`, `cs_urban`): sus modelos y sonidos salen de esa copia, el
+   repo no trae ninguno. `setup` lo busca en las bibliotecas de Steam (o
+   `--cstrike "<carpeta Half-Life>"`) y escribe la carpeta en
+   `mods\sadx-multiplayer\sadx-online.ini` (`[CounterStrike]`, `Path=`). Sin él
+   son maniquíes de cajas, mudos. Controles: X dispara, B cambia de arma, Y
+   granada, A salta.
 
 Sin el lanzador, paso a paso:
 
@@ -330,14 +338,17 @@ SADX, ejes `[-1,1]`, gatillos), que se suman a lo que el anfitrión toca en su
 propio teclado o mando; un estado que no se renueva en 900 ms se neutraliza.
 Comandos:
 
-- `status`: nivel, modo, jugadores, personajes, posiciones, qué puestos reciben
+- `status`: nivel, modo, jugadores, personajes (0–8 los del juego y Metal
+  Sonic, 9–16 los soldados), puntos (`score`), posiciones, qué puestos reciben
   input web, `splitscreen` y la parte de la ventana de cada jugador (`screen`).
 - `releaseAll`: suelta los cuatro puestos.
 - `audio` (`on`): manda el sonido del juego a quien lo pide durante 5 s.
 
 Para entrar directo a un nivel con cuatro personajes:
 `--level twinklepark --act 1 --multi 4 coop -p1 sonic -p2 tails -p3 knuckles -p4 amy`
-(con `--position x y z` aparecen en ese punto).
+(con `--position x y z` aparecen en ese punto; `-p1 cs_gign` es un soldado).
+`--bridge-port N` cambia el puerto del puente (27016), para probar una segunda
+copia del juego sin tocar la de la sala.
 
 Compilar el mod: `mod/build.ps1`, explicado en el [README de la raíz](../README.md#building-the-mod).
 

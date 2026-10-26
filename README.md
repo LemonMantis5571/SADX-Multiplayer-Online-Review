@@ -31,6 +31,8 @@ One PC runs the game. Everyone else joins from a link: no client, no install.
 - **Direct connection.** An optional WebRTC path is used whenever it beats the tunnel.
 - **Host panel.** Invite link with QR code, room password, level/act/mode/character selection, kicking
   players, and live per-view and per-viewer stats.
+- **Counter-Strike soldiers.** Eight extra characters with Sonic's movement and CS 1.6 weapons; see
+  [Counter-Strike soldiers](#counter-strike-soldiers).
 - **Chat, emotes and a built-in latency test.**
 - **Public link.** Cloudflare Tunnel, either a quick random URL or a fixed hostname.
 - **Self-healing.** The game restarts after a crash, and the room restarts without breaking the link.
@@ -74,6 +76,7 @@ flowchart LR
 | GPU | Integrated graphics are enough. Hardware encoding through NVIDIA NVENC or AMD AMF (both tested, including a Radeon 780M iGPU), or Intel Quick Sync (implemented, not yet tested). Falls back to software encoding. |
 | Tools | Git, Node.js 22+, ffmpeg 8+, cloudflared and GitHub CLI. The installer gets any that are missing through winget. |
 | Access | A GitHub account with access to this repository |
+| Optional | Counter-Strike 1.6 (Steam), for the soldiers' models and sounds |
 
 **Players:** any current browser. Browsers with WebCodecs get H.264 video; others fall back to JPEG at up
 to 20 fps.
@@ -121,6 +124,29 @@ The full CLI reference, including the JSONL mode for agents, is in [`gateway/REA
 | Start | `Enter` | | LT / RT | `Shift` / `O` |
 | Chat | `T` | | Sound | `M` |
 | Switch view | `V` | | Fullscreen | `F` |
+
+## Counter-Strike soldiers
+
+Eight Counter-Strike 1.6 player models join the character list: Phoenix, Elite Crew, Arctic and Guerilla for
+the terrorists, GIGN, GSG-9, SAS and SEAL for the counter-terrorists. They run and jump like Sonic and fight
+with guns instead of his attacks. Pick one like any other character, from the host panel or with "Quiero ser"
+in the page.
+
+| Button | Action |
+| --- | --- |
+| X | Fire. Hold it with the rifle for automatic fire. An empty clip reloads. |
+| B | Next weapon: rifle (AK-47 for terrorists, M4A1 for counter-terrorists), AWP, Desert Eagle, knife |
+| Y | Throw an HE grenade. Each soldier carries three and gets one back every ten seconds. |
+| A | Jump |
+
+The AWP goes through every enemy in its line of fire, and grenades launch enemies into the air. Each kill is
+credited to the player who made it. In battle mode the weapons hit the other players.
+
+The models and sounds come from the host's own Counter-Strike 1.6. This repository and its releases contain
+no Counter-Strike files. `setup` finds the game in any Steam library, or takes `--cstrike "<Half-Life folder>"`,
+and saves the folder in `mods\sadx-multiplayer\sadx-online.ini`. The mod reads the GoldSrc models (MDL
+version 10) and WAV sounds straight from that folder. Without Counter-Strike, the soldiers are silent box
+figures with the same weapons.
 
 ## Performance
 
@@ -228,7 +254,7 @@ disassembling `sonic.exe`:
 │   ├── public/               Built pages (committed)
 │   └── test/                 Smoke tests (port 8199)
 ├── mod/
-│   ├── src/                  Browser bridge and audio tap
+│   ├── src/                  Browser bridge, audio tap, Counter-Strike soldiers (src/cs)
 │   ├── sadx-multiplayer.patch
 │   ├── build.ps1             Build and package
 │   ├── mod.ini

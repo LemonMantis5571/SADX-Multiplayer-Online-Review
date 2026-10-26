@@ -42,9 +42,10 @@ Room:
   node gateway/agent-cli.mjs room restart        same code and port; the public link keeps working
 
 Another PC (SADX-Online-instalar.cmd):
-  node gateway/agent-cli.mjs setup --sadx "C:\\...\\Sonic Adventure DX" [--light]
+  node gateway/agent-cli.mjs setup --sadx "C:\\...\\Sonic Adventure DX" [--light] [--cstrike "C:\\...\\Half-Life"]
       installs the mod (dist/, or the repo's latest release through gh), tunes the Mod Loader profile
-      (backed up first), checks ffmpeg/cloudflared;
+      (backed up first), checks ffmpeg/cloudflared, points the Counter-Strike soldiers at the host's own
+      Counter-Strike 1.6 (found in Steam's libraries unless given);
       --light: a 960x720 window for weak integrated graphics
 
 One click (SADX-Online.cmd / SADX-Online-cerrar.cmd):
@@ -977,6 +978,43 @@ function ensureModPackage() {
   return `release ${tag} (descargada de ${slug})`;
 }
 
+// The Counter-Strike soldiers (mod/src/cs) wear the host's own Counter-Strike 1.6 models and sounds, never
+// shipped here: the mod reads [CounterStrike] Path, the Half-Life folder with cstrike\ and valve\ inside, from
+// sadx-online.ini in its folder. Without it they are stand-in soldiers.
+const CS_MODEL = path.join('cstrike', 'models', 'player', 'gign', 'gign.mdl');
+const CS_INI = 'sadx-online.ini';
+
+/** Steam's library folders on this PC, from its registry key and libraryfolders.vdf. */
+function steamLibraries() {
+  const roots = [];
+  const reg = spawnSync('reg', ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'SteamPath'], { encoding: 'utf8', windowsHide: true });
+  const match = /SteamPath\s+REG_SZ\s+(.+)/.exec(reg.stdout || '');
+  if (match) roots.push(path.resolve(match[1].trim()));
+  roots.push(path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Steam'));
+  const libraries = new Map(); // by lowercase path: Windows folders ignore case
+  const add = (dir) => libraries.set(dir.toLowerCase(), dir);
+  for (const root of roots) {
+    if (existsSync(root)) add(root);
+    try {
+      const vdf = readFileSync(path.join(root, 'steamapps', 'libraryfolders.vdf'), 'utf8');
+      for (const m of vdf.matchAll(/"path"\s+"([^"]+)"/g)) add(path.resolve(m[1].replaceAll('\\\\', '\\')));
+    } catch { /* no Steam there */ }
+  }
+  return [...libraries.values()];
+}
+
+/** The Half-Life folder holding Counter-Strike 1.6, from a folder given (it or its cstrike\) or Steam's libraries. */
+function findCounterStrike(given) {
+  const candidates = given ? [path.resolve(String(given))]
+    : steamLibraries().map((lib) => path.join(lib, 'steamapps', 'common', 'Half-Life'));
+  for (const dir of candidates) {
+    for (const halfLife of [dir, path.dirname(dir)]) {
+      if (existsSync(path.join(halfLife, CS_MODEL))) return halfLife;
+    }
+  }
+  return null;
+}
+
 /** --light: a smaller window for weak integrated graphics (each player then sees 480x360). */
 function graphicsFor(opts) {
   if (!opts.light) return RECOMMENDED_GRAPHICS;
@@ -1001,6 +1039,7 @@ async function setup(opts = {}) {
   }
   const done = [];
   const todo = [];
+  const optional = [];
   const backups = path.join(dir, 'sadx-online-backups', new Date().toISOString().replace(/[:.]/g, '-'));
   const backup = (from, name) => {
     mkdirSync(backups, { recursive: true });
@@ -1020,6 +1059,25 @@ async function setup(opts = {}) {
     if (existsSync(target)) backup(target, path.join('mods', mod));
     cpSync(path.join(DIST_MODS, mod), target, { recursive: true, force: true });
     done.push(`mod ${mod} instalado en ${target}`);
+  }
+
+  // Counter-Strike, optional: the folder given, the one found last time, or the one in Steam.
+  const modDir = path.join(dir, 'mods', 'sadx-multiplayer');
+  if (existsSync(modDir)) {
+    const remembered = readSettings().cstrike;
+    const halfLife = opts.cstrike ? findCounterStrike(opts.cstrike)
+      : (remembered && findCounterStrike(remembered)) || findCounterStrike();
+    // UTF-16 with its mark: the mod reads it with GetPrivateProfileStringW, so any folder name works.
+    const ini = `[CounterStrike]\r\nPath=${halfLife || ''}\r\n`;
+    writeFileSync(path.join(modDir, CS_INI), Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(ini, 'utf16le')]));
+    if (halfLife) {
+      saveSettings({ cstrike: halfLife });
+      done.push(`Counter-Strike 1.6: ${halfLife} (modelos y sonidos de los soldados)`);
+    } else if (opts.cstrike) {
+      todo.push(`no encuentro Counter-Strike 1.6 en ${opts.cstrike} (busco ${CS_MODEL}): pasa la carpeta Half-Life`);
+    } else {
+      optional.push('Counter-Strike 1.6 para los soldados (sin él son maniquíes): instálalo en Steam (steam://install/10) y repite setup');
+    }
   }
 
   // The active profile: mods enabled and the graphics settings the stream needs.
@@ -1069,13 +1127,14 @@ async function setup(opts = {}) {
 
   saveSettings({ gameExe: exe });
   done.push(`la sala abrirá ${exe}`);
-  return { ok: todo.length === 0, gameExe: exe, done, todo, backups: existsSync(backups) ? backups : null };
+  return { ok: todo.length === 0, gameExe: exe, done, todo, optional, backups: existsSync(backups) ? backups : null };
 }
 
 function printSetup(result) {
   const lines = ['', '  Preparación de SADX Online', ''];
   for (const line of result.done) lines.push(`  ok    ${line}`);
   for (const line of result.todo) lines.push(`  falta ${line}`);
+  for (const line of result.optional || []) lines.push(`  opcional ${line}`);
   if (result.backups) lines.push('', `  Copia de lo que reemplacé: ${result.backups}`);
   lines.push('', result.todo.length
     ? '  Instala lo que falta y vuelve a ejecutar esto (no repite nada que ya esté).'
