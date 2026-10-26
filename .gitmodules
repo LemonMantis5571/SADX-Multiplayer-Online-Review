@@ -1,6 +1,4 @@
-[submodule "sadx-mod-loader"]
-	path = external/sadx-mod-loader
-	url = https://github.com/X-Hax/sadx-mod-loader
-[submodule "external/enet"]
-	path = external/enet
-	url = https://github.com/lsalzman/enet
+[submodule "mod/sadx-multiplayer"]
+	path = mod/sadx-multiplayer
+	url = https://github.com/kellsnc/sadx-multiplayer
+	ignore = dirty

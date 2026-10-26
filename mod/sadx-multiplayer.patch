@@ -1,0 +1,137 @@
+diff --git a/source/input.cpp b/source/input.cpp
+index daabceb..ca58ec0 100644
+--- a/source/input.cpp
++++ b/source/input.cpp
+@@ -4,6 +4,7 @@
+ #include "splitscreen.h"
+ #include "netplay.h"
+ #include "camera.h"
++#include "browser_bridge.h"
+ 
+ // Everything related to inputs
+ // Networking part of the code originally by @michael-fadely
+@@ -230,11 +231,16 @@ void InitInputPatches()
+ 
+ extern "C"
+ {
+-#ifdef MULTI_NETPLAY
+ 	__declspec(dllexport) void __cdecl OnInput()
+ 	{
++		browser_bridge::Receive();
++
++#ifdef MULTI_NETPLAY
+ 		if (!netplay.IsConnected())
++		{
++			browser_bridge::Apply();
+ 			return;
++		}
+ 
+ 		// Move first controller inputs to proper player
+ 		if (netplay.GetPlayerNum() != 0)
+@@ -292,8 +298,9 @@ extern "C"
+ 				local_per->r = local_per->on & Buttons_R ? UCHAR_MAX : 0;
+ 			}
+ 		}
+-	}
+ #endif
++		browser_bridge::Apply();
++	}
+ 
+ 	__declspec(dllexport) void __cdecl OnControl()
+ 	{
+diff --git a/source/mod.cpp b/source/mod.cpp
+index b313ded..3160148 100644
+--- a/source/mod.cpp
++++ b/source/mod.cpp
+@@ -19,6 +19,8 @@
+ #include "game.h"
+ #include "collision.h"
+ #include "event.h"
++#include "browser_bridge.h"
++#include "audio_tap.h"
+ 
+ const HelperFunctions* gHelperFunctions;
+ 
+@@ -49,6 +51,8 @@ extern "C"
+ 
+ 		InitCamera();
+ 		InitInputPatches();
++		browser_bridge::Init();
++		audio_tap::Init(); // before the game opens its sound device
+ 		InitMenu();
+ 		InitSET();
+ 		InitRace();
+@@ -84,6 +88,7 @@ extern "C"
+ 	{
+ 		if (mod_initialized)
+ 		{
++			browser_bridge::Shutdown();
+ 			netplay.Exit();
+ 
+ 			FreePatches();
+diff --git a/source/patches/patch_o_casino_fanfan.cpp b/source/patches/patch_o_casino_fanfan.cpp
+index 364123f..c9bfcc2 100644
+--- a/source/patches/patch_o_casino_fanfan.cpp
++++ b/source/patches/patch_o_casino_fanfan.cpp
+@@ -29,7 +29,7 @@ static void __cdecl ObjectCasinoFanfan_Exec_r(task* tp);
+ FastFunctionHookPtr<decltype(&ObjectCasinoFanfan_Exec_r)> ObjectCasinoFanfan_Exec_h(0x5CBAF0);
+ 
+ UsercallFunc(Bool, IsRangeIn, (taskwk* twp, NJS_POINT3* pos, float mul_), (twp, pos, mul_), 0x5CB9B0, rEAX, rEAX, rECX, stack4);
+-UsercallFuncVoid(InitKuzu, (taskwk* twp), (twp), 0x5CB9B0, rEBX);
++UsercallFuncVoid(InitKuzu, (taskwk* twp), (twp), 0x5CB650, rEBX);
+ 
+ static bool IsPlayerRangeIn(taskwk* twp, float mul)
+ {
+diff --git a/source/patches/patch_rd_twinkle.cpp b/source/patches/patch_rd_twinkle.cpp
+index cd05252..a70066f 100644
+--- a/source/patches/patch_rd_twinkle.cpp
++++ b/source/patches/patch_rd_twinkle.cpp
+@@ -8,7 +8,7 @@
+ 
+ static auto setTPFog = GenerateUsercallWrapper<void (*)(unsigned __int8 mode)>(noret, 0x61CAC0, rAL);
+ 
+-FunctionPointer(void, TwinkleMaskBlock, (taskwk* twp), 0x60FEE0); // checkCamera
++FunctionPointer(void, TwinkleMaskBlock, (taskwk* twp), 0x61CDE0); // checkCamera
+ 
+ FastFunctionHook<void, task*> Rd_Twinkle_h(0x61D150);
+ FastFunctionHook<void, task*> dispBgTwinkle_h(0x61D1F0);
+diff --git a/source/sadx-multiplayer.vcxproj b/source/sadx-multiplayer.vcxproj
+index 29772b2..696922c 100644
+--- a/source/sadx-multiplayer.vcxproj
++++ b/source/sadx-multiplayer.vcxproj
+@@ -82,7 +82,7 @@
+       <ConformanceMode>true</ConformanceMode>
+       <PrecompiledHeader>Use</PrecompiledHeader>
+       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+-      <AdditionalIncludeDirectories>$(SolutionDir)external\sadx-mod-loader\SADXModLoader\include;$(SolutionDir)external\sadx-mod-loader\libmodutils;$(SolutionDir)external\sadx-mod-loader\mod-loader-common\ModLoaderCommon;$(SolutionDir)external\enet\include;$(SolutionDir)external\Characters-Importer\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <AdditionalIncludeDirectories>$(ProjectDir)..\..\src;$(ProjectDir)..\..\.build\dx8;$(SolutionDir)external\sadx-mod-loader\SADXModLoader;$(SolutionDir)external\sadx-mod-loader\SADXModLoader\include;$(SolutionDir)external\sadx-mod-loader\libmodutils;$(SolutionDir)external\sadx-mod-loader\mod-loader-common\ModLoaderCommon;$(SolutionDir)external\enet\include;$(SolutionDir)external\Characters-Importer\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+     </ClCompile>
+     <Link>
+       <SubSystem>Windows</SubSystem>
+@@ -91,7 +91,7 @@
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <EnableUAC>false</EnableUAC>
+       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+-      <AdditionalDependencies>libmodutils.lib;ModLoaderCommon.lib;d3dx8.lib;Characters-Importer.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies>libmodutils.lib;ModLoaderCommon.lib;ws2_32.lib;Characters-Importer.lib;%(AdditionalDependencies)</AdditionalDependencies>
+       <AdditionalLibraryDirectories>$(OutDir);$(ProgramFiles)\DirectX 8.1 SDK\lib;$(SolutionDir)external\Characters-Importer\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+       <DelayLoadDLLs>Characters-Importer.dll</DelayLoadDLLs>
+     </Link>
+@@ -119,6 +119,8 @@
+     <ClInclude Include="hud_itembox.h" />
+     <ClInclude Include="hud_result.h" />
+     <ClInclude Include="input.h" />
++    <ClInclude Include="..\..\src\audio_tap.h" />
++    <ClInclude Include="..\..\src\browser_bridge.h" />
+     <ClInclude Include="game.h" />
+     <ClInclude Include="menu.h" />
+     <ClInclude Include="menu_adventure.h" />
+@@ -179,6 +181,8 @@
+     <ClCompile Include="hud_itembox.cpp" />
+     <ClCompile Include="hud_result.cpp" />
+     <ClCompile Include="input.cpp" />
++    <ClCompile Include="..\..\src\audio_tap.cpp" />
++    <ClCompile Include="..\..\src\browser_bridge.cpp" />
+     <ClCompile Include="game.cpp" />
+     <ClCompile Include="menu_adventure.cpp" />
+     <ClCompile Include="patches\patch_albhv_dakko.cpp" />

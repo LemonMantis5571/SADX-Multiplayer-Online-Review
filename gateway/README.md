@@ -34,8 +34,10 @@ la misma sala. Para reiniciar solo la sala sin cortar el enlace ni el juego:
 1. Una copia de SADX PC 2004 US convertida, con SADX Mod Loader (el SADX Mod
    Installer convierte la de Steam). La instalación Steam sin convertir no sirve.
 2. `SADX-Online-instalar.cmd` en la raíz del repo, o
-   `node gateway/agent-cli.mjs setup --sadx "<carpeta de SADX>"`: instala los mods
-   de `dist/mods`, recuerda dónde está `sonic.exe` (`.agent-state/settings.json`;
+   `node gateway/agent-cli.mjs setup --sadx "<carpeta de SADX>"`: instala el mod
+   (el de `dist/mods` si lo compilaste con `mod/build.ps1`; si no, lo baja de la
+   última release del repo con `gh` y lo actualiza cuando sale otra), recuerda
+   dónde está `sonic.exe` (`.agent-state/settings.json`;
    también vale la variable `SADX_EXE`) y ajusta el perfil activo del cargador
    (`mods\.modloader\profiles\<perfil>.json`, con copia en
    `<SADX>\sadx-online-backups\`):
@@ -187,7 +189,7 @@ disponible para `capture` y `doctor`.
 
 Solo el sonido de SADX, nada más de la PC. La captura por proceso de Windows
 solo oye silencio de SADX (su DirectSound no queda asociado al proceso), así que
-lo saca el mod desde dentro (`source/audio_tap.cpp`): engancha el flujo WASAPI
+lo saca el mod desde dentro (`mod/src/audio_tap.cpp`): engancha el flujo WASAPI
 compartido donde DirectSound mezcla todo y, mientras la sala lo pida
 (`{"cmd":"audio"}` cada 2 s), manda cada búfer por UDP local. La sala lo pasa a
 Opus (20 ms, 96 kbps) y lo envía por el WebSocket a quien activó el sonido
@@ -306,10 +308,12 @@ Las pruebas de humo usan el puerto 8199 (nunca el 8123 de una sala real) y
 
 ## Puente del mod
 
-El mod escucha UDP en `127.0.0.1:27016` desde `OnInput()`, sin bloquear el
-frame. Los paquetes son el JSON de `lib/backends.mjs`: los asientos web 1–4 son
-los puestos 0–3 del mod (botones de SADX, ejes `[-1,1]`, gatillos); un estado que
-no se renueva en 900 ms se neutraliza. Comandos:
+El mod (`mod/src/browser_bridge.cpp`) escucha UDP en `127.0.0.1:27016` desde
+`OnInput()`, sin bloquear el frame. Los paquetes son el JSON de
+`lib/backends.mjs`: los asientos web 1–4 son los puestos 0–3 del mod (botones de
+SADX, ejes `[-1,1]`, gatillos), que se suman a lo que el anfitrión toca en su
+propio teclado o mando; un estado que no se renueva en 900 ms se neutraliza.
+Comandos:
 
 - `status`: nivel, modo, jugadores, personajes, posiciones, qué puestos reciben
   input web, `splitscreen` y la parte de la ventana de cada jugador (`screen`).
@@ -317,25 +321,10 @@ no se renueva en 900 ms se neutraliza. Comandos:
 - `audio` (`on`): manda el sonido del juego a quien lo pide durante 5 s.
 
 Para entrar directo a un nivel con cuatro personajes:
-`--level twinklepark --act 1 --multi 4 coop -p1 sonic -p2 tails -p3 knuckles -p4 amy`.
+`--level twinklepark --act 1 --multi 4 coop -p1 sonic -p2 tails -p3 knuckles -p4 amy`
+(con `--position x y z` aparecen en ese punto).
 
-### Compilar el mod
-
-La solución completa pide herramientas viejas (v141_xp, SDK 8.1); el mod solo se
-compila con la configuración `PrivateOnline` y las cabeceras de DirectX 8 de
-`D:\Tools\SADX-DX8-Compat`:
-
-```powershell
-$env:DXSDK_DIR = 'D:\Tools\SADX-DX8-Compat\'
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" `
-  source\sadx-multiplayer.vcxproj -p:Configuration=PrivateOnline -p:Platform=Win32 `
-  -p:SolutionDir=D:\Code\SADX-Multiplayer-Online\ -p:BuildProjectReferences=false
-```
-
-Sale en `bin\sadx-multiplayer.dll`. Cópiala a `dist\mods\sadx-multiplayer\` y
-vuelve a ejecutar `setup` (con el juego cerrado) para instalarla en tu SADX. Las
-cabeceras de DirectX 8 no vienen en el repo: en esta máquina están en
-`D:\Tools\SADX-DX8-Compat\Include` (`d3d8.h`, `d3d8caps.h`, `d3d8types.h`).
+Compilar el mod: `mod/build.ps1`, explicado en el [README de la raíz](../README.md#el-mod).
 
 ## Límites
 

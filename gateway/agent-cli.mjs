@@ -41,7 +41,8 @@ Room:
 
 Another PC (SADX-Online-instalar.cmd):
   node gateway/agent-cli.mjs setup --sadx "C:\\...\\Sonic Adventure DX" [--light]
-      installs the mods from dist/, tunes the Mod Loader profile (backed up first), checks ffmpeg/cloudflared;
+      installs the mod (dist/, or the repo's latest release through gh), tunes the Mod Loader profile
+      (backed up first), checks ffmpeg/cloudflared;
       --light: a 960x720 window for weak integrated graphics
 
 One click (SADX-Online.cmd / SADX-Online-cerrar.cmd):
@@ -923,6 +924,57 @@ const RECOMMENDED_GRAPHICS = {
 // same frame rate): setup turns it off where an earlier version of this project turned it on.
 const UNWANTED_MODS = ['sadx-frame-limit'];
 
+// The built mod: mod/build.ps1 writes dist/mods, or setup takes it from this repo's latest GitHub release
+// (asset MOD_ZIP) and notes the tag in RELEASE_MARK, to replace it when a newer release comes out.
+const MOD_ZIP = 'sadx-online-mod.zip';
+const RELEASE_MARK = path.join(path.dirname(DIST_MODS), 'release.json');
+const BUILD_HINT = 'o compílalo con Visual Studio 2022: powershell -ExecutionPolicy Bypass -File mod\\build.ps1';
+
+/** owner/name of this repo on GitHub, from its git remotes. */
+function repoSlug() {
+  const remotes = spawnSync('git', ['-C', path.dirname(HERE), 'remote', '-v'], { encoding: 'utf8', windowsHide: true });
+  const match = /github\.com[:/]([\w.-]+\/[\w.-]+?)(?:\.git)?\s/.exec(remotes.stdout || '');
+  return match ? match[1] : 'LemonMantis5571/SADX-Multiplayer-Online';
+}
+
+/** Makes sure dist/mods holds the built mod; returns where it came from. */
+function ensureModPackage() {
+  const built = existsSync(path.join(DIST_MODS, 'sadx-multiplayer', 'sadx-multiplayer.dll'));
+  let mark = null;
+  try { mark = readState(RELEASE_MARK); } catch { /* rewritten below */ }
+  if (built && !mark) return 'compilado en esta PC (mod/build.ps1)';
+
+  const slug = repoSlug();
+  // Just installed with winget: on PATH only for windows opened afterwards.
+  const installed = path.join(process.env.ProgramFiles || 'C:\\Program Files', 'GitHub CLI', 'gh.exe');
+  const ghExe = existsSync(installed) ? installed : 'gh';
+  const gh = (args) => spawnSync(ghExe, args, { encoding: 'utf8', windowsHide: true, timeout: 120000 });
+  const view = gh(['release', 'view', '--repo', slug, '--json', 'tagName']);
+  if (view.error || view.status !== 0) {
+    const reason = view.error ? 'GitHub CLI (gh) no está instalado' : (view.stderr || '').trim().split(/\r?\n/)[0];
+    if (built) return `release ${mark.tag} (no pude ver si hay una más nueva: ${reason})`;
+    throw new Error(`no pude bajar el mod de ${slug}: ${reason}. Instala GitHub CLI y entra con tu cuenta `
+      + `(winget install --id GitHub.cli --exact; gh auth login), ${BUILD_HINT}`);
+  }
+  const tag = JSON.parse(view.stdout).tagName;
+  if (built && mark?.tag === tag) return `release ${tag}`;
+
+  const download = path.join(STATE_DIR, 'download');
+  rmSync(download, { recursive: true, force: true });
+  mkdirSync(download, { recursive: true });
+  const got = gh(['release', 'download', tag, '--repo', slug, '--pattern', MOD_ZIP, '--dir', download]);
+  if (got.error || got.status !== 0) throw new Error(`no pude bajar ${MOD_ZIP} de la release ${tag}: ${(got.stderr || got.error?.message || '').trim()}`);
+  rmSync(DIST_MODS, { recursive: true, force: true });
+  mkdirSync(DIST_MODS, { recursive: true });
+  // Windows' own bsdtar reads zip files; a GNU tar earlier on PATH (Git for Windows) does not.
+  const tar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+  const unzip = spawnSync(tar, ['-xf', path.join(download, MOD_ZIP), '-C', DIST_MODS], { encoding: 'utf8', windowsHide: true });
+  if (unzip.error || unzip.status !== 0) throw new Error(`no pude descomprimir ${MOD_ZIP}: ${(unzip.stderr || unzip.error?.message || '').trim()}`);
+  writeFileSync(RELEASE_MARK, JSON.stringify({ tag, repo: slug }, null, 2), 'utf8');
+  rmSync(download, { recursive: true, force: true });
+  return `release ${tag} (descargada de ${slug})`;
+}
+
 /** --light: a smaller window for weak integrated graphics (each player then sees 480x360). */
 function graphicsFor(opts) {
   if (!opts.light) return RECOMMENDED_GRAPHICS;
@@ -930,10 +982,10 @@ function graphicsFor(opts) {
 }
 
 /**
- * Prepares a PC to host: installs the mods from dist/ into SADX (the built multiplayer mod with the browser
- * bridge, and the frame limiter), tunes the active Mod Loader profile, remembers where sonic.exe is, and
- * says what's missing (Node, ffmpeg with gfxcapture, cloudflared). Whatever it replaces is copied to
- * <SADX>/sadx-online-backups/<time>/ first.
+ * Prepares a PC to host: installs the mod from dist/ into SADX (SADX Multiplayer with the browser bridge,
+ * built by mod/build.ps1 or taken from the repo's latest release), tunes the active Mod Loader profile,
+ * remembers where sonic.exe is, and says what's missing (Node, ffmpeg with gfxcapture, cloudflared).
+ * Whatever it replaces is copied to <SADX>/sadx-online-backups/<time>/ first.
  */
 async function setup(opts = {}) {
   const given = opts.sadx || opts.positionals?.[1];
@@ -954,7 +1006,13 @@ async function setup(opts = {}) {
   };
 
   // The mods.
-  const mods = readdirSync(DIST_MODS, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  let mods = [];
+  try {
+    done.push(`mod: ${ensureModPackage()}`);
+    mods = readdirSync(DIST_MODS, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch (error) {
+    todo.push(error.message);
+  }
   for (const mod of mods) {
     const target = path.join(dir, 'mods', mod);
     if (existsSync(target)) backup(target, path.join('mods', mod));
@@ -978,7 +1036,8 @@ async function setup(opts = {}) {
     const off = (profile.EnabledMods || []).filter((m) => UNWANTED_MODS.includes(m));
     profile.EnabledMods = [...new Set([...(profile.EnabledMods || []).filter((m) => !UNWANTED_MODS.includes(m)), ...mods])];
     writeFileSync(profileFile, JSON.stringify(profile, null, 2), 'utf8');
-    done.push(`perfil ${path.basename(profileFile)}: ${mods.join(' y ')} activado, ventana ${graphics.HorizontalResolution}x${graphics.VerticalResolution}, Direct3D 9, sin pausa sin foco`);
+    const enabled = mods.length ? `${mods.join(' y ')} activado, ` : '';
+    done.push(`perfil ${path.basename(profileFile)}: ${enabled}ventana ${graphics.HorizontalResolution}x${graphics.VerticalResolution}, Direct3D 9, sin pausa sin foco`);
     if (off.length) done.push(`${off.join(', ')} desactivado (gastaba un núcleo entero sin mejorar los fps)`);
   } else {
     todo.push(`no encontré el perfil del Mod Loader (${profileFile}): abre SA Mod Manager una vez y repite setup`);

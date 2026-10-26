@@ -1,82 +1,13 @@
-# User-specific files
-*.user
+# Built by mod/build.ps1 (or downloaded by `setup` from the latest release)
+mod/.build/
+dist/
 
-# Build results
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
-
-# Visual Studio cache directory
-.vs/
-
-# .NET Core
-project.lock.json
-project.fragment.lock.json
-artifacts/
-
-# Files built by Visual Studio
-*_i.c
-*_p.c
-*_h.h
-*.ilk
-*.meta
-*.obj
-*.iobj
-*.pch
-*.pdb
-*.ipdb
-*.pgc
-*.pgd
-*.rsp
-*.sbr
-*.tlb
-*.tli
-*.tlh
-*.tmp
-*.tmp_proj
-*_wpftmp.csproj
-*.log
-*.vspscc
-*.vssscc
-.builds
-*.pidb
-*.svclog
-*.scc
-
-# Visual C++ cache files
-ipch/
-*.aps
-*.ncb
-*.opendb
-*.opensdf
-*.sdf
-*.cachefile
-*.VC.db
-*.VC.VC.opendb
-
-# Visual Studio profiler
-*.psess
-*.vsp
-*.vspx
-*.sap
-
-# NuGet Packages
-*.nupkg
-*.snupkg
-**/[Pp]ackages/*
-!**/[Pp]ackages/build/
-*.nuget.props
-*.nuget.targets
-
-# Visual Studio cache files
-*.[Cc]ache
-!?*.[Cc]ache/
-# Browser gateway runtime state (PIDs, admin token, logs)
+# Gateway runtime state (PIDs, admin token, logs, settings) and packages
 gateway/.agent-state/
 gateway/node_modules/
 gateway/web/node_modules/
+
+# Editors
+.vs/
+.vscode/
+*.user

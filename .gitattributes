@@ -1,14 +1,8 @@
-*            text=auto
+* text=auto
 
-*.sln        text eol=crlf
-*.csproj     text eol=crlf
-*.vcxproj    text eol=crlf
-*.filters    text eol=crlf
-
-#*.sln       merge=binary
-#*.csproj    merge=binary
-#*.vcxproj   merge=binary
-#*.filters   merge=binary
-# SADX Online launchers and scripts run by cmd.exe / Windows PowerShell
+# Run by cmd.exe and Windows PowerShell
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+
+# Applied with `git apply` inside the original mod's checkout: kept byte for byte
+*.patch -text

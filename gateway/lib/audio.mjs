@@ -1,6 +1,6 @@
 // The game's sound for the browser.
 //
-// The mod copies SADX's final sound mix out of the game (source/audio_tap.cpp:
+// The mod copies SADX's final sound mix out of the game (mod/src/audio_tap.cpp:
 // Windows' per-process loopback capture only hears silence from it) and sends it
 // over local UDP while this asks for it: {"cmd":"audio"} to the mod's browser
 // input port, repeated every 2 s while anyone listens. Each datagram is a 16-byte
