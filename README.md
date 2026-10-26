@@ -187,10 +187,22 @@ To move to a newer base commit, discard the applied patch (`git -C mod/sadx-mult
 out the commit inside the submodule, rebuild (refreshing the patch if it no longer applies) and commit the
 new submodule pointer.
 
+### Checking the base mod's addresses
+
+The base mod calls and hooks game functions by raw address, and a wrong one crashes only when that code runs.
+`mod/tools/audit_addresses.py` checks every declaration against your `sonic.exe`: that each address is a
+function start, that the registers a usercall passes are the ones the function reads, and that no address
+carries two names. Run it after changing the patch or the base mod's commit:
+
+```powershell
+py -3 -m pip install capstone pefile
+py -3 mod/tools/audit_addresses.py "<SADX folder>\sonic.exe" mod/sadx-multiplayer/source
+```
+
 ### Fixes in the patch
 
-Besides wiring in the bridge and the audio tap, the patch fixes two wrong addresses in the base mod. Both
-were verified by disassembling `sonic.exe`:
+Besides wiring in the bridge and the audio tap, the patch fixes these bugs in the base mod, all verified by
+disassembling `sonic.exe`:
 
 - **Casinopolis crash** (`SADX has crashed at 5cb9b1`). `InitKuzu` pointed at `IsRangeIn` (`0x5CB9B0`), so
   the game crashed whenever a player came near a sewer fan in multiplayer. It now points at the real
@@ -198,6 +210,11 @@ were verified by disassembling `sonic.exe`:
 - **Twinkle Park split screen.** `TwinkleMaskBlock` pointed at Speed Highway's function (`0x60FEE0`), so
   split screen picked which parts of the level to draw from another level's thresholds. It now uses
   `0x61CDE0`.
+- **Metal Sonic.** Character 8 indexed past the base mod's table of eight characters, so picking him created
+  a broken player that crashed or froze the game. He is now Sonic with the game's `MetalSonicFlag` turned on
+  only while his own code runs (update, display, destruction and his after-images), so each player can pick
+  him on their own.
+- **`CCL_Enable`** was declared on the function's final `ret` (`0x41C213`); it starts at `0x41C1F0`.
 
 ## Repository layout
 

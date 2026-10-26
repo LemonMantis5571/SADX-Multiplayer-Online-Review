@@ -197,7 +197,8 @@ script, cómo publicar una release y cómo cambiar la base del mod: [`README.md`
   `node gateway/agent-cli.mjs test`.
 - Las páginas: `gateway/web` (React + Vite + Tailwind + shadcn/ui); `npm install` y `npm run build` en esa
   carpeta dejan el resultado en `gateway/public`, que va en git.
-- El mod: `mod/src` y `mod/sadx-multiplayer.patch`, luego [Compilar el mod](#compilar-el-mod). Para probar en
+- El mod: `mod/src` y `mod/sadx-multiplayer.patch`, luego [Compilar el mod](#compilar-el-mod). Si tocas direcciones del
+  juego, pasa `mod/tools/audit_addresses.py` (ver [`README.md`](README.md#checking-the-base-mods-addresses)). Para probar en
   un punto concreto de un nivel, el juego acepta
   `--level casinopolis --act 1 --multi 4 coop -p1 sonic -p2 tails -p3 knuckles -p4 amy --position x y z`.
 

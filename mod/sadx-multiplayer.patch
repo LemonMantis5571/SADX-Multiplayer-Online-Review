@@ -296,3 +296,16 @@ index 29772b2..696922c 100644
      <ClCompile Include="game.cpp" />
      <ClCompile Include="menu_adventure.cpp" />
      <ClCompile Include="patches\patch_albhv_dakko.cpp" />
+diff --git a/source/sadx_utils.h b/source/sadx_utils.h
+index c34b222..df21937 100644
+--- a/source/sadx_utils.h
++++ b/source/sadx_utils.h
+@@ -403,7 +403,7 @@ FunctionPointer(Sint32, GetPlayerCharacterName, (Uint8 pno), 0x441970);
+ FunctionPointer(Bool, OnEdit, (task* tp), 0x4F88A0);
+ FunctionPointer(void, SeqChangeStage, (Sint32 stg, Sint32 act), 0x412D80);
+ FunctionPointer(void, SeqClrFlag, (Sint32 no), 0x412D10);
+-FunctionPointer(void, CCL_Enable, (taskwk* twp, int no), 0x41C213);
++FunctionPointer(void, CCL_Enable, (taskwk* twp, int no), 0x41C1F0);
+ FunctionPointer(void, CCL_Disable, (taskwk* twp, int no), 0x41C220);
+ FunctionPointer(Bool, ALW_CommunicationOff, (task* tp), 0x71A520);
+ FunctionPointer(Bool, ALW_IsHeld, (task* tp), 0x71A320);
