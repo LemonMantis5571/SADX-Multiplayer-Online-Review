@@ -69,6 +69,74 @@ index b313ded..3160148 100644
  			netplay.Exit();
  
  			FreePatches();
+diff --git a/source/multiplayer.cpp b/source/multiplayer.cpp
+index ce9b974..00319b1 100644
+--- a/source/multiplayer.cpp
++++ b/source/multiplayer.cpp
+@@ -65,6 +65,7 @@ namespace multiplayer
+ 	mode gMode = mode::coop;
+ 	bool online = false;
+ 	static int characters[PLAYER_MAX] = { -1, -1, -1, -1 };
++	static bool metal_sonic[PLAYER_MAX] = {};
+ 
+ 	unsigned int GetPlayerCount()
+ 	{
+@@ -132,9 +133,17 @@ namespace multiplayer
+ 		return online;
+ 	}
+ 
++	// The game has Metal Sonic only as Sonic drawn with its one global MetalSonicFlag: a Metal Sonic player is
++	// Sonic everywhere, and patch_sonic.cpp turns the flag on only while that player's own Sonic code runs.
+ 	void SetCharacter(int pnum, int character)
+ 	{
+-		characters[pnum] = character;
++		metal_sonic[pnum] = character == Characters_MetalSonic;
++		characters[pnum] = metal_sonic[pnum] ? Characters_Sonic : character;
++	}
++
++	bool IsMetalSonic(int pnum)
++	{
++		return pnum >= 0 && pnum < PLAYER_MAX && metal_sonic[pnum];
+ 	}
+ 
+ 	int GetCharacter(int pnum)
+@@ -153,6 +162,11 @@ namespace multiplayer
+ 		{
+ 			character = -1;
+ 		}
++
++		for (auto& metal : metal_sonic)
++		{
++			metal = false;
++		}
+ 	}
+ }
+ 
+@@ -166,6 +180,12 @@ task* LoadPlayerTask(int pnum, int character)
+ 	}
+ 	else
+ 	{
++		// Only the game's own characters have a task: anything else would run whatever follows the table.
++		if (character < 0 || character >= (int)LengthOfArray(charfuncs))
++		{
++			character = Characters_Sonic;
++		}
++
+ 		tp = CreateElementalTask((LoadObj_UnknownA | LoadObj_Data1 | LoadObj_Data2), LEV_1, charfuncs[character]);
+ 	}
+ 	TASKWK_CHARID(tp->twp) = character;
+diff --git a/source/multiplayer.h b/source/multiplayer.h
+index 217f63f..b09d1f7 100644
+--- a/source/multiplayer.h
++++ b/source/multiplayer.h
+@@ -22,6 +22,7 @@ namespace multiplayer
+ 	bool IsOnline(); // Check if in networking mode (todo: move)
+ 
+ 	void SetCharacter(int pnum, int character);
++	bool IsMetalSonic(int pnum);
+ 	int GetCharacter(int pnum);
+ 	void ResetCharacters();
+ }
 diff --git a/source/patches/patch_o_casino_fanfan.cpp b/source/patches/patch_o_casino_fanfan.cpp
 index 364123f..c9bfcc2 100644
 --- a/source/patches/patch_o_casino_fanfan.cpp
@@ -95,6 +163,76 @@ index cd05252..a70066f 100644
  
  FastFunctionHook<void, task*> Rd_Twinkle_h(0x61D150);
  FastFunctionHook<void, task*> dispBgTwinkle_h(0x61D1F0);
+diff --git a/source/patches/patch_sonic.cpp b/source/patches/patch_sonic.cpp
+index bfaa416..36707fd 100644
+--- a/source/patches/patch_sonic.cpp
++++ b/source/patches/patch_sonic.cpp
+@@ -16,6 +16,20 @@ FastFunctionHookPtr<TaskFuncPtr> SonicDirectAhead_h((intptr_t)0x493C70);
+ FastFunctionHookPtr<TaskFuncPtr> SonicJiggle_h(0x4937B0);
+ FastUsercallHookPtr<Bool(*)(playerwk* pwp, taskwk* twp, motionwk2* mwp), rEAX, rEAX, rEDI, stack4> Sonic_CheckInput_hook(0x495FA0);
+ FastFunctionHookPtr<TaskFuncPtr> SonicTheHedgehog_h(0x49A9B0);
++FastFunctionHookPtr<TaskFuncPtr> SonicDisplay_h(0x4948C0);
++FastFunctionHookPtr<TaskFuncPtr> SonicDestruct_h(0x494860);
++
++// Metal Sonic: MetalSonicFlag is on while that player's Sonic runs (its init loads his textures), draws and is
++// destroyed (which frees them); other players' Sonics see the flag as the game left it.
++static char MetalSonicFlagFor(task* tp)
++{
++	const char flag = MetalSonicFlag;
++	if (multiplayer::IsActive() && multiplayer::IsMetalSonic(TASKWK_PLAYERID(tp->twp)))
++	{
++		MetalSonicFlag = 1;
++	}
++	return flag;
++}
+ 
+ static void SonicHomingOnRings_m(taskwk* twp, motionwk2* mwp, playerwk* pwp)
+ {
+@@ -227,11 +241,13 @@ static void __cdecl SonicTheHedgehog_r(task* tp)
+ 	{
+ 		auto pnum = TASKWK_PLAYERID(tp->twp);
+ 		auto twp = tp->twp;
++		const char flag = MetalSonicFlagFor(tp);
+ 
+ 		gravity::SaveGlobalGravity();
+ 		gravity::SwapGlobalToUserGravity(pnum);
+ 		SonicTheHedgehog_h.Original(tp);
+ 		gravity::RestoreGlobalGravity();
++		MetalSonicFlag = flag;
+ 	}
+ 	else
+ 	{
+@@ -239,6 +255,20 @@ static void __cdecl SonicTheHedgehog_r(task* tp)
+ 	}
+ }
+ 
++static void __cdecl SonicDisplay_r(task* tp)
++{
++	const char flag = MetalSonicFlagFor(tp);
++	SonicDisplay_h.Original(tp);
++	MetalSonicFlag = flag;
++}
++
++static void __cdecl SonicDestruct_r(task* tp)
++{
++	const char flag = MetalSonicFlagFor(tp);
++	SonicDestruct_h.Original(tp);
++	MetalSonicFlag = flag;
++}
++
+ void patch_sonic_init()
+ {
+ 	SonicHomingOnRings_h.Hook(SonicHomingOnRings_r);
+@@ -247,6 +277,8 @@ void patch_sonic_init()
+ 	SonicJiggle_h.Hook(SonicJiggle_r);
+ 	Sonic_CheckInput_hook.Hook(Sonic_CheckInput_r);
+ 	SonicTheHedgehog_h.Hook(SonicTheHedgehog_r);
++	SonicDisplay_h.Hook(SonicDisplay_r);
++	SonicDestruct_h.Hook(SonicDestruct_r);
+ }
+ 
+ RegisterPatch patch_sonic(patch_sonic_init);
+\ No newline at end of file
 diff --git a/source/sadx-multiplayer.vcxproj b/source/sadx-multiplayer.vcxproj
 index 29772b2..696922c 100644
 --- a/source/sadx-multiplayer.vcxproj

@@ -125,9 +125,11 @@ Copy-Item (Join-Path $Upstream 'resources\mod\*') $Package -Recurse
 Copy-Item (Join-Path $ModDir 'mod.ini') $Package -Force
 Copy-Item $dll $Package
 if (Test-Path $Zip) { Remove-Item $Zip -Force }
-# tar.exe (Windows 10 1803+) writes '/' separators; Windows PowerShell's Compress-Archive writes '\'.
-if (Get-Command tar.exe -ErrorAction SilentlyContinue) {
-    Invoke-Native tar.exe @('-a', '-c', '-f', $Zip, '-C', (Join-Path $Dist 'mods'), 'sadx-multiplayer')
+# Windows' own tar.exe (Windows 10 1803+) writes '/' separators; Windows PowerShell's Compress-Archive writes '\'.
+# By full path: the GNU tar that Git for Windows puts on PATH can't write zip files and reads 'D:\' as a host.
+$tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+if (Test-Path $tar) {
+    Invoke-Native $tar @('-a', '-c', '-f', $Zip, '-C', (Join-Path $Dist 'mods'), 'sadx-multiplayer')
 } else {
     Compress-Archive -Path $Package -DestinationPath $Zip
 }

@@ -125,7 +125,8 @@ namespace browser_bridge
 			{
 				nlohmann::json player = {
 					{"seat", i + 1},
-					{"character", multiplayer::GetCharacter(i)},
+					// Metal Sonic plays as Sonic in the mod (multiplayer.cpp); the page still shows him as himself.
+					{"character", multiplayer::IsMetalSonic(i) ? static_cast<int>(Characters_MetalSonic) : multiplayer::GetCharacter(i)},
 					{"browserInput", pads[i].active},
 					{"inputAgeMs", pads[i].active ? static_cast<int>(GetTickCount64() - pads[i].lastUpdate) : -1}
 				};
