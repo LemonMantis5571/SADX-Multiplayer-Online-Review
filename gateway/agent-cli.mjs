@@ -1059,7 +1059,8 @@ async function setup(opts = {}) {
     else done.push(`vídeo: ${backend.encoder} en ${backend.gpu}`);
   }
   if (!existsSync(path.join(HERE, 'node_modules', 'werift'))) {
-    const npm = spawnSync('npm', ['install', '--no-fund', '--no-audit'], { cwd: HERE, encoding: 'utf8', windowsHide: true, shell: true });
+    // npm is npm.cmd on Windows, so it goes through the shell: one command line, no separate arguments.
+    const npm = spawnSync('npm install --no-fund --no-audit', { cwd: HERE, encoding: 'utf8', windowsHide: true, shell: true });
     if (npm.status === 0) done.push('conexión directa (WebRTC): werift instalado');
     else todo.push('conexión directa (opcional): npm install en la carpeta gateway');
   }
