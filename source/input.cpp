@@ -77,24 +77,29 @@ namespace
 		return result;
 	}
 
+	// The browser's input adds to what the game already read this frame from the host PC's keyboard or
+	// controller (OnInput runs after that): a seat held by a browser page, even an idle one, doesn't lock
+	// out whoever plays that character on the host.
 	void ApplyBrowserPad(int index, BrowserPad& state)
 	{
 		auto controller = per[index];
 		if (!controller) return;
 
-		controller->x1 = state.x1;
-		controller->y1 = state.y1;
-		controller->x2 = state.x2;
-		controller->y2 = state.y2;
-		controller->on = state.buttons;
-		controller->off = ~state.buttons;
-		const auto changed = state.oldButtons ^ state.buttons;
-		controller->press = changed & state.buttons;
+		const auto stick = [](int16_t browser, int16_t host) { return browser != 0 ? browser : host; };
+		const auto buttons = state.buttons | controller->on;
+		controller->x1 = stick(state.x1, controller->x1);
+		controller->y1 = stick(state.y1, controller->y1);
+		controller->x2 = stick(state.x2, controller->x2);
+		controller->y2 = stick(state.y2, controller->y2);
+		controller->on = buttons;
+		controller->off = ~buttons;
+		const auto changed = state.oldButtons ^ buttons;
+		controller->press = changed & buttons;
 		controller->release = changed & state.oldButtons;
-		controller->old = state.buttons;
-		controller->l = state.buttons & Buttons_L ? 0xFF : 0;
-		controller->r = state.buttons & Buttons_R ? 0xFF : 0;
-		state.oldButtons = state.buttons;
+		controller->old = buttons;
+		if (buttons & Buttons_L) controller->l = 0xFF;
+		if (buttons & Buttons_R) controller->r = 0xFF;
+		state.oldButtons = buttons;
 	}
 
 	void ResetBrowserPad(BrowserPad& state)
