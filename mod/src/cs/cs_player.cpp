@@ -424,11 +424,24 @@ namespace cs
 				}
 			}
 			const Placement identity = { {}, { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, 1.0f };
+			const StudioModel* grenadeModel = GetModel("models\\w_hegrenade.mdl");
+			std::vector<Mat34> grenadeBones;
+			if (grenadeModel) grenadeModel->Pose(0, 0.0f, -1, 0.0f, grenadeBones);
 			for (const auto& g : grenades)
 			{
 				Placement p = identity;
 				p.origin = { g.pos.x, g.pos.y, g.pos.z };
-				Box(tris, p, -0.8f, 0.8f, -0.8f, 0.8f, -0.8f, 0.8f, 0xFF3F5A2A);
+				if (grenadeModel)
+				{
+					// Counter-Strike's own grenade, tumbling end over end.
+					const float spin = g.fuse * 0.35f;
+					p.forward = { std::cos(spin), std::sin(spin), 0.0f };
+					p.up = { -std::sin(spin), std::cos(spin), 0.0f };
+					p.side = { 0.0f, 0.0f, 1.0f };
+					p.scale = Scale;
+					render::Model(*grenadeModel, grenadeBones, p);
+				}
+				else Box(tris, p, -0.8f, 0.8f, -0.8f, 0.8f, -0.8f, 0.8f, 0xFF3F5A2A);
 			}
 			for (const auto& b : blasts)
 			{
@@ -652,12 +665,7 @@ namespace cs
 		if (const StudioModel* gun = GetModel(std::string("models\\") + w.model[terrorist ? 0 : 1]))
 		{
 			std::vector<Mat34> gunBones;
-			gun->Pose(0, 0.0f, -1, 0.0f, gunBones);
-			for (int b = 0; b < gun->BoneCount(); ++b)
-			{
-				const int match = body->FindBone(gun->BoneName(b));
-				if (match >= 0) gunBones[b] = bones[match];
-			}
+			gun->PoseOn(0, 0.0f, *body, bones, gunBones);
 			render::Model(*gun, gunBones, where);
 		}
 		return true;

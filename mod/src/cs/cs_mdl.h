@@ -50,10 +50,15 @@ namespace cs
 		int BoneCount() const { return static_cast<int>(bones_.size()); }
 		const char* BoneName(int bone) const { return bones_[bone].name; }
 
-		// Model-space bone transforms for a frame of a sequence (two-blend aim sequences mixed half and half: level
-		// aim). With a gait sequence, the bones before "Bip01 Spine" (pelvis and legs) come from it, like the
-		// engine does for players.
+		// Model-space bone transforms for a frame of a sequence, aiming level (the middle blend of Counter-Strike's
+		// nine, or two blends mixed half and half). With a gait sequence, the root, pelvis and legs come from it,
+		// like the engine does for players.
 		void Pose(int sequence, float frame, int gait, float gaitFrame, std::vector<Mat34>& out) const;
+
+		// The same for a model attached to another one (a weapon on a player): bones named like one of the owner's
+		// take its transform and the rest follow their parent, like the engine's StudioMergeBones.
+		void PoseOn(int sequence, float frame, const StudioModel& owner, const std::vector<Mat34>& ownerBones,
+			std::vector<Mat34>& out) const;
 
 		const std::vector<ModelMesh>& Meshes() const { return meshes_; }
 		const std::vector<ModelTexture>& Textures() const { return textures_; }
@@ -80,12 +85,14 @@ namespace cs
 		};
 
 		void Rotations(int sequence, int blend, float frame, std::vector<float>& pos, std::vector<float>& quat) const;
+		void Build(const std::vector<float>& pos, const std::vector<float>& quat, const StudioModel* owner,
+			const std::vector<Mat34>* ownerBones, std::vector<Mat34>& out) const;
 
 		std::vector<Bone> bones_;
 		std::vector<Sequence> sequences_;
 		std::vector<ModelMesh> meshes_;
 		std::vector<ModelTexture> textures_;
 		std::vector<std::vector<uint8_t>> groups_; // sequence group data: [0] is the model file itself
-		int spine_ = -1;
+		std::vector<bool> gait_;                   // per bone: driven by the gait sequence
 	};
 }

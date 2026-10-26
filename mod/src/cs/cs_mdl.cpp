@@ -389,7 +389,19 @@ namespace cs
 		textures_ = std::move(textures);
 		groups[0] = std::move(data);
 		groups_ = std::move(groups);
-		spine_ = FindBone("Bip01 Spine");
+		// The bones a player's gait sequence drives, picked like the SDK's GameStudioModelRenderer (Counter-Strike):
+		// from the root on, off at "Bip01 Spine", back on at each child of "Bip01 Pelvis" (CS models list the
+		// spine and arms before the legs).
+		gait_.assign(bones_.size(), false);
+		const int spine = FindBone("Bip01 Spine");
+		const int pelvis = FindBone("Bip01 Pelvis");
+		bool copy = spine >= 0;
+		for (size_t b = 0; b < bones_.size(); ++b)
+		{
+			if (static_cast<int>(b) == spine) copy = false;
+			else if (pelvis >= 0 && bones_[b].parent == pelvis) copy = true;
+			gait_[b] = copy;
+		}
 		return true;
 	}
 
@@ -478,8 +490,11 @@ namespace cs
 	void StudioModel::Pose(int sequence, float frame, int gait, float gaitFrame, std::vector<Mat34>& out) const
 	{
 		std::vector<float> pos, quat;
-		Rotations(sequence, 0, frame, pos, quat);
-		if (sequence >= 0 && sequence < static_cast<int>(sequences_.size()) && sequences_[sequence].blends > 1)
+		const int blends = sequence >= 0 && sequence < static_cast<int>(sequences_.size()) ? sequences_[sequence].blends : 1;
+		// Counter-Strike's aim sequences have nine blends, a 3x3 grid of pitch and yaw: the middle one aims level
+		// and straight ahead.
+		Rotations(sequence, blends > 2 && blends % 2 ? blends / 2 : 0, frame, pos, quat);
+		if (blends == 2)
 		{
 			// Level aim: halfway between the down and up blends (the engine's StudioSlerpBones at pitch 0).
 			std::vector<float> pos2, quat2;
@@ -492,16 +507,40 @@ namespace cs
 				for (int i = 0; i < 3; ++i) pos[b * 3 + i] = (pos[b * 3 + i] + pos2[b * 3 + i]) * 0.5f;
 			}
 		}
-		if (gait >= 0 && spine_ > 0)
+		if (gait >= 0)
 		{
 			std::vector<float> gpos, gquat;
 			Rotations(gait, 0, gaitFrame, gpos, gquat);
-			std::copy(gpos.begin(), gpos.begin() + spine_ * 3, pos.begin());
-			std::copy(gquat.begin(), gquat.begin() + spine_ * 4, quat.begin());
+			for (size_t b = 0; b < bones_.size(); ++b)
+			{
+				if (!gait_[b]) continue;
+				std::copy(gpos.begin() + b * 3, gpos.begin() + b * 3 + 3, pos.begin() + b * 3);
+				std::copy(gquat.begin() + b * 4, gquat.begin() + b * 4 + 4, quat.begin() + b * 4);
+			}
 		}
+		Build(pos, quat, nullptr, nullptr, out);
+	}
+
+	void StudioModel::PoseOn(int sequence, float frame, const StudioModel& owner, const std::vector<Mat34>& ownerBones,
+		std::vector<Mat34>& out) const
+	{
+		std::vector<float> pos, quat;
+		Rotations(sequence, 0, frame, pos, quat);
+		Build(pos, quat, &owner, &ownerBones, out);
+	}
+
+	void StudioModel::Build(const std::vector<float>& pos, const std::vector<float>& quat, const StudioModel* owner,
+		const std::vector<Mat34>* ownerBones, std::vector<Mat34>& out) const
+	{
 		out.resize(bones_.size());
 		for (size_t b = 0; b < bones_.size(); ++b)
 		{
+			const int match = owner ? owner->FindBone(bones_[b].name) : -1;
+			if (match >= 0 && match < static_cast<int>(ownerBones->size()))
+			{
+				out[b] = (*ownerBones)[match];
+				continue;
+			}
 			Mat34 local;
 			QuaternionMatrix(&quat[b * 4], &pos[b * 3], local);
 			if (bones_[b].parent < 0) out[b] = local;
