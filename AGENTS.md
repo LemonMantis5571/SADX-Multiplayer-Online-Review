@@ -154,8 +154,8 @@ En `doctor`, `checks.gateway.ok` y `checks.sadxMod.ok` deben ser `true` (`player
 puede salir `false` mientras nadie mira: el vídeo arranca cuando alguien entra. `capture` guarda un cuadro de
 la ventana del juego: míralo.
 
-Dile al usuario: pasa el enlace a sus amigos (cada uno elige un puesto en la página; el resto mira), el
-teclado o mando de la PC maneja al jugador 1, el sonido se activa en la página con 🔊 o la tecla M, y la
+Dile al usuario: pasa el enlace a sus amigos (cada uno elige un puesto del 2 al 4 en la página; el resto
+mira), él juega como jugador 1 con el teclado o mando de la PC (ese puesto es siempre suyo), el sonido se activa en la página con 🔊 o la tecla M, y la
 ventana del juego no se minimiza (la sala la vuelve a abrir si pasa). Para cerrar: el paso 8, o doble clic en
 `SADX-Online-cerrar.cmd`.
 

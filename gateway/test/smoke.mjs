@@ -72,7 +72,9 @@ try {
   const code = first.room.code;
   check('sala creada con código de 5 caracteres', typeof code === 'string' && code.length === 5, code);
   check('4 puestos declarados', first.seats === 4, String(first.seats));
-  check('todos los puestos libres al arrancar', first.room.seats.every((s) => !s.occupied));
+  check('el puesto 1 es del anfitrión', first.room.seats[0].host === true && first.room.seats[0].occupied && first.room.seats[0].name === 'Anfitrión',
+    JSON.stringify(first.room.seats[0]));
+  check('los puestos de invitados libres al arrancar', first.room.seats.filter((s) => !s.host).every((s) => !s.occupied));
 
   // Código incorrecto: el servidor debe rechazar.
   const wrong = await new Promise((resolve) => {
@@ -82,7 +84,16 @@ try {
   });
   check('código incorrecto rechazado', wrong === 1008, String(wrong));
 
-  // Dos clientes ocupan los dos primeros puestos.
+  // Nadie entra directo al puesto del anfitrión.
+  const hostSeat = await new Promise((resolve) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws?code=${code}&seat=1`);
+    let error = null;
+    ws.addEventListener('message', (ev) => { try { error = JSON.parse(ev.data).message ?? error; } catch { /* ignora */ } });
+    ws.addEventListener('close', (ev) => resolve({ code: ev.code, error }));
+  });
+  check('entrar con ?seat=1 se rechaza', hostSeat.code === 1008 && /anfitrión/.test(hostSeat.error || ''), JSON.stringify(hostSeat));
+
+  // Dos clientes ocupan los dos primeros puestos de invitados.
   const a = await openSocket(code);
   await sleep(150);
   const b = await openSocket(code);
@@ -90,18 +101,18 @@ try {
 
   const welcomeA = a.messages.find((m) => m.t === 'welcome');
   const welcomeB = b.messages.find((m) => m.t === 'welcome');
-  check('cliente A recibe bienvenida en el puesto 1', welcomeA?.seat === 1, JSON.stringify(welcomeA));
-  check('cliente B recibe bienvenida en el puesto 2', welcomeB?.seat === 2, JSON.stringify(welcomeB));
+  check('cliente A recibe bienvenida en el puesto 2', welcomeA?.seat === 2, JSON.stringify(welcomeA));
+  check('cliente B recibe bienvenida en el puesto 3', welcomeB?.seat === 3, JSON.stringify(welcomeB));
 
   let st = await status();
-  check('dos puestos ocupados', st.room.seats.filter((s) => s.occupied).length === 2, JSON.stringify(st.room.seats.map((s) => s.occupied)));
+  check('dos puestos de invitados ocupados', st.room.seats.filter((s) => s.occupied && !s.host).length === 2, JSON.stringify(st.room.seats.map((s) => s.occupied)));
 
   // Un puesto ocupado debe sobrevivir al vigilante, que corre cada 2 s.
   await sleep(2600);
   st = await status();
   check(
     'los puestos siguen ocupados tras pasar el vigilante',
-    st.room.seats[0].occupied && st.room.seats[1].occupied,
+    st.room.seats[1].occupied && st.room.seats[2].occupied,
     JSON.stringify(st.room.seats.map((s) => s.occupied)),
   );
 
@@ -110,7 +121,7 @@ try {
   await sleep(250);
   st = await status();
   check('el pad llega al backend', st.input.totalMessages > 0, JSON.stringify(st.input));
-  check('el puesto 1 tiene datos recientes', st.room.seats[0].padAge !== null && st.room.seats[0].padAge < 3000, String(st.room.seats[0].padAge));
+  check('el puesto 2 tiene datos recientes', st.room.seats[1].padAge !== null && st.room.seats[1].padAge < 3000, String(st.room.seats[1].padAge));
 
   // Ping/pong.
   a.ws.send(JSON.stringify({ t: 'ping', id: 12345 }));
@@ -121,7 +132,13 @@ try {
   a.ws.send(JSON.stringify({ t: 'release' }));
   await sleep(200);
   st = await status();
-  check('liberar deja el puesto 1 libre', !st.room.seats[0].occupied);
+  check('liberar deja el puesto 2 libre', !st.room.seats[1].occupied);
+
+  // Un espectador tampoco puede pedir el puesto del anfitrión.
+  a.ws.send(JSON.stringify({ t: 'claim', seat: 1 }));
+  await sleep(150);
+  const hostClaim = a.messages.filter((m) => m.t === 'claim-result').pop();
+  check('pedir el puesto 1 se rechaza', hostClaim?.ok === false && /anfitrión/.test(hostClaim.message || ''), JSON.stringify(hostClaim));
   check('el socket de A sigue abierto tras liberar', a.ws.readyState === WebSocket.OPEN);
 
   // El espectador no puede mover el puesto liberado.
@@ -133,22 +150,22 @@ try {
 
   // Desconexión: el puesto se libera solo.
   const preDisconnect = await status();
-  check('el puesto 2 sigue ocupado antes de desconectar', preDisconnect.room.seats[1].occupied);
+  check('el puesto 3 sigue ocupado antes de desconectar', preDisconnect.room.seats[2].occupied);
   b.ws.close();
   await sleep(3200); // deja correr el vigilante
   st = await status();
-  check('desconectar libera el puesto 2', !st.room.seats[1].occupied, JSON.stringify(st.room.seats.map((s) => s.occupied)));
+  check('desconectar libera el puesto 3', !st.room.seats[2].occupied, JSON.stringify(st.room.seats.map((s) => s.occupied)));
 
-  // Los cuatro puestos son finitos, pero la audiencia puede entrar como espectadora.
+  // Los puestos de invitados son finitos, pero la audiencia puede entrar como espectadora.
   const clients = [];
-  for (let i = 0; i < 4; i += 1) {
+  for (let i = 0; i < 3; i += 1) {
     clients.push(await openSocket(code));
     await sleep(120);
   }
   const fifth = await openSocket(code);
   await sleep(150);
   const welcomeFifth = fifth.messages.find((m) => m.t === 'welcome');
-  check('el quinto cliente entra como espectador', welcomeFifth?.role === 'spectator' && welcomeFifth.seat === null, JSON.stringify(welcomeFifth));
+  check('con los puestos 2–4 ocupados, el siguiente entra como espectador', welcomeFifth?.role === 'spectator' && welcomeFifth.seat === null, JSON.stringify(welcomeFifth));
   let full = await status();
   check('la sala cuenta a la audiencia espectadora', full.spectators >= 1, String(full.spectators));
 
@@ -163,7 +180,7 @@ try {
   fifth.ws.send(JSON.stringify({ t: 'claim' }));
   await sleep(150);
   const assignedFifth = fifth.messages.find((m) => m.t === 'assigned');
-  check('el espectador puede tomar un puesto cuando queda libre', assignedFifth?.seat === 1, JSON.stringify(assignedFifth));
+  check('el espectador puede tomar un puesto cuando queda libre', assignedFifth?.seat === 2, JSON.stringify(assignedFifth));
   fifth.ws.send(JSON.stringify({ t: 'pad', b: { a: true }, a: { lx: 0.5 } }));
   await sleep(200);
   full = await status();

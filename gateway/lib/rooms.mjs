@@ -3,6 +3,11 @@
 // capacidad para que el anfitrión sepa qué navegador ocupa cada mando.
 export const SEAT_MAX = 4;
 
+// Player 1 is whoever sits at the host PC (its keyboard and controllers drive it in the game): no browser
+// can take that seat, so the host always has a character.
+export const HOST_SEAT = 1;
+export const HOST_NAME = 'Anfitrión';
+
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin I/O/0/1
 
 export function makeRoomCode(length = 5) {
@@ -19,6 +24,7 @@ export class Room {
     this.createdAt = Date.now();
     this.seats = Array.from({ length: seatCount }, (_, i) => ({
       index: i + 1,
+      host: i + 1 === HOST_SEAT,
       clientId: null,
       name: null,
       since: null,
@@ -28,11 +34,17 @@ export class Room {
     }));
   }
 
+  /** Whether a browser can sit in seat `index` (1-based) right now. */
+  isFree(index) {
+    const seat = this.seats[index - 1];
+    return Boolean(seat && !seat.host && seat.clientId === null);
+  }
+
   /** Takes seat `wanted` (1-based) if it's free, or the first free seat when `wanted` is 0. */
   claim(clientId, name = null, wanted = 0) {
     const seat = wanted
-      ? this.seats.find((s) => s.index === wanted && s.clientId === null)
-      : this.seats.find((s) => s.clientId === null);
+      ? (this.isFree(wanted) ? this.seats[wanted - 1] : null)
+      : this.seats.find((s) => this.isFree(s.index));
     if (!seat) return null;
     seat.clientId = clientId;
     seat.name = name || `invitado-${seat.index}`;
@@ -101,8 +113,9 @@ export class Room {
       code: this.code,
       seats: this.seats.map((s) => ({
         index: s.index,
-        occupied: s.clientId !== null,
-        name: s.name,
+        host: s.host,
+        occupied: s.host || s.clientId !== null,
+        name: s.host ? HOST_NAME : s.name,
         since: s.since,
         padAge: s.lastPadAt ? Date.now() - s.lastPadAt : null,
         want: s.want,

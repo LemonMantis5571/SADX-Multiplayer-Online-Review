@@ -65,12 +65,16 @@ function SeatsCard() {
                   {seat.occupied ? seat.name || 'Jugador' : 'Libre'}
                 </div>
                 <div className="truncate text-xs text-ink-subtle">
-                  {onBench ? `puesto ${seat.index} · entra en la próxima partida` : `${ch.name} · puesto ${seat.index}`}
+                  {seat.host
+                    ? `${ch.name} · juega en la PC del anfitrión`
+                    : onBench ? `puesto ${seat.index} · entra en la próxima partida` : `${ch.name} · puesto ${seat.index}`}
                   {wants && wants !== ch.name && <span className="text-ink-muted"> → quiere {wants}</span>}
                 </div>
               </div>
               {mine ? (
                 <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">TÚ</span>
+              ) : seat.host ? (
+                <span className="rounded-full border border-hairline px-2 py-0.5 text-[11px] font-medium text-ink-subtle">PC</span>
               ) : !seat.occupied && s.connected ? (
                 <Button size="sm" variant="secondary" onClick={() => claimSeat(seat.index)}>{s.seat ? 'Cambiar' : 'Jugar'}</Button>
               ) : (

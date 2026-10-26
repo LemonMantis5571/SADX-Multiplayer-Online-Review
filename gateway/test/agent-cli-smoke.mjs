@@ -112,7 +112,7 @@ try {
 
   const lines = [
     { op: 'room.status', url: roomUrl },
-    { op: 'connect', seat: 1, name: 'cli-smoke', url: roomUrl },
+    { op: 'connect', name: 'cli-smoke', url: roomUrl }, // no seat: the first guest seat (1 is the host's)
     { op: 'input', buttons: ['a'], axes: { ly: -1 }, durationMs: 120 },
     { op: 'release' },
   ].map((entry) => JSON.stringify(entry)).join('\n');
@@ -121,14 +121,15 @@ try {
   assert.equal(replies.length, 4);
   assert.equal(replies[0].ok, true);
   assert.equal(replies[1].connected, true);
-  assert.equal(replies[1].seat, 1);
+  assert.equal(replies[1].seat, 2);
   assert.ok(replies[2].sent >= 1);
   assert.equal(replies[3].released, true);
   console.log('  ok   agente JSONL consulta, controla y libera un puesto');
 
   const status = parseJson(run(['room', 'status', '--url', roomUrl]).stdout);
-  assert.equal(status.status.room.seats[0].occupied, false);
-  assert.ok(status.status.input.perSeat['1'] > 0);
+  assert.equal(status.status.room.seats[0].host, true);
+  assert.equal(status.status.room.seats[1].occupied, false);
+  assert.ok(status.status.input.perSeat['2'] > 0);
   console.log('  ok   la sala registra el mando y libera el puesto al terminar');
 
   const doctorOutput = run(['--stdio'], {

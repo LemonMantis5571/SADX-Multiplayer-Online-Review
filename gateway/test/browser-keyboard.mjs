@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { HOST_SEAT } from '../lib/rooms.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const GATEWAY = path.resolve(HERE, '..');
@@ -14,6 +15,7 @@ const TUNNEL_STATE = path.join(STATE_DIR, 'tunnel.json');
 const GAME_STATE = path.join(STATE_DIR, 'game.json');
 const FOCUS_SCRIPT = path.join(GATEWAY, 'lib', 'focus-game-window.ps1');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const GUEST_SEAT = HOST_SEAT + 1; // the seat Edge takes and moves (the host PC plays HOST_SEAT)
 
 function parseArgs(argv) {
   const result = {};
@@ -113,8 +115,8 @@ function getModStatus() {
   if (result.status !== 0) throw new Error(result.stderr.trim() || result.stdout.trim() || 'SADX no respondió al estado del mod');
   const value = JSON.parse(result.stdout);
   if (!value.mod?.multiplayerActive) throw new Error('el modo multijugador de SADX no está activo');
-  const player = value.mod.players?.find((entry) => entry.seat === 1);
-  if (!player) throw new Error('el mod no reportó al personaje del puesto 1');
+  const player = value.mod.players?.find((entry) => entry.seat === GUEST_SEAT);
+  if (!player) throw new Error(`el mod no reportó al personaje del puesto ${GUEST_SEAT}`);
   return player;
 }
 
@@ -294,7 +296,8 @@ async function main() {
   if (!localStatus.room?.code || localStatus.room.code !== targetUrl.searchParams.get('code')) {
     throw new Error('el enlace apunta a una sala distinta o el código no coincide');
   }
-  if (localStatus.room.seats?.some((seat) => seat.occupied)) throw new Error('libera los cuatro puestos antes de correr la prueba de navegador');
+  if (localStatus.room.seats?.some((seat) => seat.occupied && !seat.host)) throw new Error('libera los puestos de invitados antes de correr la prueba de navegador');
+  const guestSeats = localStatus.room.seats.filter((seat) => !seat.host).map((seat) => seat.index);
   const localPageUrl = `${roomOrigin}/?code=${encodeURIComponent(localStatus.room.code)}`;
   const mappedAddress = resolveBrowserHost(targetUrl.hostname);
 
@@ -310,14 +313,14 @@ async function main() {
     focusGuard = startFocusGuard(gameState.pid);
     await sleep(600);
     initialPosition = getModStatus();
-    for (let i = 0; i < 4; i += 1) {
-      const client = await connectRoomClient(localPageUrl, `browser-e2e-${i + 1}`);
+    for (const index of guestSeats) {
+      const client = await connectRoomClient(localPageUrl, `browser-e2e-${index}`);
       blockers.push(client);
-      if (client.welcome.role !== 'player' || client.welcome.seat !== i + 1) {
-        throw new Error(`el puesto ${i + 1} no fue asignado al preparar el aforo`);
+      if (client.welcome.role !== 'player' || client.welcome.seat !== index) {
+        throw new Error(`el puesto ${index} no fue asignado al preparar el aforo`);
       }
     }
-    console.log('  ok   cuatro puestos ocupados para probar la llegada de oyentes extra');
+    console.log('  ok   puestos de invitados ocupados para probar la llegada de oyentes extra');
     console.log('  ok   SADX se mantiene al frente durante la prueba de video e input');
 
     const tempRoot = path.resolve(os.tmpdir());
@@ -336,7 +339,7 @@ async function main() {
     await cdp.send('Runtime.enable');
     const spectator = await waitForSeat(cdp, 'espectador');
     joined = true;
-    console.log(`  ok   Edge entró como ${spectator.seat} aunque los cuatro puestos estaban ocupados`);
+    console.log(`  ok   Edge entró como ${spectator.seat} con los puestos de invitados ocupados`);
     const video = await waitForVideo(cdp);
     console.log(`  ok   Edge recibió el video de ${video.width}×${video.height}`);
 
@@ -359,7 +362,7 @@ async function main() {
     const seatDeadline = Date.now() + 3000;
     while (Date.now() < seatDeadline) {
       const status = await getJson(`${roomOrigin}/api/status`);
-      if (!status.room.seats[0].occupied) break;
+      if (!status.room.seats[GUEST_SEAT - 1].occupied) break;
       await sleep(100);
     }
     let claimButton = null;
@@ -371,7 +374,7 @@ async function main() {
     }
     if (claimButton?.hidden !== false || claimButton?.disabled) throw new Error('la página no ofreció tomar el puesto que quedó libre');
     await evaluate(cdp, "document.querySelector('#claimBtn').click()");
-    const seat = await waitForSeat(cdp, '1');
+    const seat = await waitForSeat(cdp, String(GUEST_SEAT));
     console.log(`  ok   el espectador tomó el puesto ${seat.seat} al liberarse`);
 
     const before = getModStatus();
@@ -400,11 +403,11 @@ async function main() {
     const releaseDeadline = Date.now() + 3000;
     while (Date.now() < releaseDeadline) {
       const status = await getJson(`${roomOrigin}/api/status`);
-      if (!status.room.seats[0].occupied) break;
+      if (!status.room.seats[GUEST_SEAT - 1].occupied) break;
       await sleep(150);
     }
     const finalStatus = await getJson(`${roomOrigin}/api/status`);
-    if (finalStatus.room.seats[0].occupied) throw new Error('Edge no liberó el puesto al terminar');
+    if (finalStatus.room.seats[GUEST_SEAT - 1].occupied) throw new Error('Edge no liberó el puesto al terminar');
     console.log('  ok   el puesto quedó libre al finalizar la prueba');
   } finally {
     if (joined && cdp) {

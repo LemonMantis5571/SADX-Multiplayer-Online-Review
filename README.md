@@ -20,8 +20,9 @@ One PC runs the game. Everyone else joins from a link: no client, no install.
 
 ## Features
 
-- **Browser seats.** Up to four players and any number of spectators, with keyboard, gamepad or on-screen
-  touch controls. Spectators take a seat as soon as one frees up.
+- **Browser seats.** The host always plays as player 1 on the PC. Up to three guests take players 2–4 from
+  the browser, with keyboard, gamepad or on-screen touch controls; anyone else watches and can take a seat
+  as soon as one frees up.
 - **Your own screen.** Each player can watch just their quarter of the split screen, encoded at its own
   resolution, or switch to the full game or another player's view.
 - **Low-latency video.** One GPU window capture and H.264 encoder per view, decoded with WebCodecs.

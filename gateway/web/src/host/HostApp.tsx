@@ -24,7 +24,7 @@ type GameConfig = { level: string; act: number; mode: string; characters: string
 type ViewStatus = { height: number; measuredFps: number | null; measuredKbps: number | null; encoding: boolean; lastFrameAt: number | null };
 type AdminState = {
   room: string; password: boolean; localUrl: string; shareUrl: string | null;
-  seats: { index: number; occupied: boolean; name: string | null; want: string | null; ip: string | null; padAge: number | null }[];
+  seats: { index: number; host?: boolean; occupied: boolean; name: string | null; want: string | null; ip: string | null; padAge: number | null }[];
   spectators: { name: string | null; ip: string }[];
   game: { running?: boolean; pid?: number | null; busy?: boolean; config?: GameConfig; autoRestarts?: number; managed?: boolean };
   mod: { online: boolean; characters?: number[] };
@@ -282,7 +282,7 @@ function MatchCard({ state, form, busy, onChange, onApply, onStop }: {
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-4">
         {form.characters.map((ch, i) => (
-          <Field key={i} label={`Jugador ${i + 1}`}>
+          <Field key={i} label={i === 0 ? 'Jugador 1 · tú, en esta PC' : `Jugador ${i + 1}`}>
             <SimpleSelect id={`char${i + 1}`} value={ch} options={characters}
               onChange={(v) => { const list = [...form.characters]; list[i] = v; onChange({ ...form, characters: list }); }} />
           </Field>
@@ -336,13 +336,13 @@ function PlayersCard({ state, onKick }: { state: AdminState; onKick: (seat: numb
               <TableRow key={s.index}>
                 <TableCell className="font-mono text-ink-subtle">{s.index}</TableCell>
                 {/* Names come from visitors: React renders them as text, never as HTML. */}
-                <TableCell className={s.occupied ? 'text-ink' : 'text-ink-tertiary'}>{s.occupied ? s.name || 'jugador' : '— libre —'}</TableCell>
+                <TableCell className={s.occupied ? 'text-ink' : 'text-ink-tertiary'}>{s.host ? 'Anfitrión (esta PC)' : s.occupied ? s.name || 'jugador' : '— libre —'}</TableCell>
                 <TableCell className="text-ink-muted">{current ? CHAR_NAMES[current] || current : '—'}</TableCell>
                 <TableCell className="text-ink-muted">{s.want && s.want !== current ? CHAR_NAMES[s.want] || s.want : ''}</TableCell>
-                <TableCell className="font-mono text-xs text-ink-subtle">{s.ip ?? ''}</TableCell>
-                <TableCell>{s.occupied && <span className={cn('inline-block size-2 rounded-full', s.padAge != null && s.padAge < 1500 ? 'bg-success' : 'bg-hairline-tertiary')} />}</TableCell>
+                <TableCell className="font-mono text-xs text-ink-subtle">{s.host ? 'local' : s.ip ?? ''}</TableCell>
+                <TableCell>{s.occupied && !s.host && <span className={cn('inline-block size-2 rounded-full', s.padAge != null && s.padAge < 1500 ? 'bg-success' : 'bg-hairline-tertiary')} />}</TableCell>
                 <TableCell className="text-right">
-                  {s.occupied && (
+                  {s.occupied && !s.host && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button size="sm" variant="destructive"><UserX />Sacar</Button>

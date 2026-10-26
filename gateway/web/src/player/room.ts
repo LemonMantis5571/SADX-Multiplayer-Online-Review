@@ -11,7 +11,7 @@ type Button = (typeof BUTTONS)[number];
 type Axis = (typeof AXES)[number];
 type Pad = { b: Record<Button, boolean>; a: Record<Axis, number> };
 
-export type Seat = { index: number; occupied: boolean; name: string | null; padAge: number | null; want: string | null };
+export type Seat = { index: number; host?: boolean; occupied: boolean; name: string | null; padAge: number | null; want: string | null };
 export type ChatLine = { id: number; name: string; seat: number | null; text: string };
 export type FloatingEmote = { id: number; e: string; name: string; seat: number | null; left: number };
 type Tone = 'ok' | 'warn' | 'bad' | '';

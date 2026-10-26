@@ -12,7 +12,7 @@ import path from 'node:path';
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { attachWsServer } from './lib/ws.mjs';
-import { Room, makeRoomCode, SEAT_MAX } from './lib/rooms.mjs';
+import { Room, makeRoomCode, SEAT_MAX, HOST_NAME } from './lib/rooms.mjs';
 import { VideoStream } from './lib/video.mjs';
 import { VideoHub, layoutFor } from './lib/videohub.mjs';
 import { GameAudio } from './lib/audio.mjs';
@@ -307,8 +307,8 @@ function main() {
       localUrl: `http://127.0.0.1:${cfg.port}/?code=${room.code}`,
       shareUrl: shareUrl(),
       seats: room.seats.map((s) => ({
-        index: s.index, occupied: s.clientId !== null, name: s.name, want: s.want,
-        ip: s.clientId ? conns.get(s.clientId)?.clientIp ?? null : null,
+        index: s.index, host: s.host, occupied: s.host || s.clientId !== null, name: s.host ? HOST_NAME : s.name,
+        want: s.want, ip: s.clientId ? conns.get(s.clientId)?.clientIp ?? null : null,
         padAge: s.lastPadAt ? Date.now() - s.lastPadAt : null,
       })),
       spectators: [...ws.connections].filter((c) => !room.seatOf(c.id)).map((c) => ({ name: c.displayName, ip: c.clientIp })),
@@ -586,9 +586,8 @@ function main() {
       }
       if (wantedSeat) {
         room.prunePresent(connectedIds());
-        const taken = room.seats.find((s) => s.index === wantedSeat && s.clientId !== null);
-        if (taken) {
-          conn.send({ t: 'error', message: `el puesto ${wantedSeat} ya está ocupado` });
+        if (!room.isFree(wantedSeat)) {
+          conn.send({ t: 'error', message: seatTakenMessage(wantedSeat) });
           conn.close(1008, 'seat taken');
           return;
         }
@@ -776,7 +775,7 @@ function main() {
           const wanted = Number.isInteger(msg.seat) ? msg.seat : 0;
           const claimed = room.claim(conn.id, conn.displayName, wanted);
           if (!claimed) {
-            conn.send({ t: 'claim-result', ok: false, message: wanted ? `el puesto ${wanted} ya está ocupado` : 'no hay un puesto libre' });
+            conn.send({ t: 'claim-result', ok: false, message: wanted ? seatTakenMessage(wanted) : 'no hay un puesto libre' });
             return;
           }
           conn.send({ t: 'assigned', seat: claimed.index, role: 'player', ...seatsPayload() });
@@ -816,6 +815,12 @@ function main() {
       });
     },
   });
+
+  function seatTakenMessage(index) {
+    return room.seats[index - 1]?.host
+      ? `el puesto ${index} es del anfitrión (juega en la PC)`
+      : `el puesto ${index} ya está ocupado`;
+  }
 
   function seatsPayload() {
     return {

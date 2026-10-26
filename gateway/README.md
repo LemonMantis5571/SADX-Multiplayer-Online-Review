@@ -3,8 +3,10 @@
 La computadora anfitriona ejecuta SADX y el mod. Las demás personas entran con
 un navegador, sin descargar cliente ni instalar nada. El navegador muestra el
 juego del host (con sonido) y manda teclado, controles táctiles o Gamepad API a
-uno de cuatro puestos locales. Si los cuatro están ocupados, las demás personas
-entran como espectadoras y pueden tomar un puesto cuando alguien lo libere.
+uno de los puestos locales. El puesto 1 es siempre del anfitrión, que juega con
+el teclado o mando de su PC: ningún navegador puede tomarlo. Los invitados usan
+los puestos 2–4; si están ocupados, entran como espectadores y pueden tomar uno
+cuando alguien lo libere.
 
 ```text
 navegador ── WebSocket (túnel) ─────────► sala (server.mjs) ── UDP local ──► SADX + mod
@@ -262,7 +264,7 @@ node gateway/agent-cli.mjs room restart
 node gateway/agent-cli.mjs share status
 node gateway/agent-cli.mjs doctor
 node gateway/agent-cli.mjs mod status
-node gateway/agent-cli.mjs pad --seat 1 --buttons a --ly -1 --duration 700
+node gateway/agent-cli.mjs pad --seat 2 --buttons a --ly -1 --duration 700
 node gateway/agent-cli.mjs capture frame.jpg
 node gateway/agent-cli.mjs test browser
 node gateway/agent-cli.mjs down
@@ -277,7 +279,7 @@ node gateway/agent-cli.mjs --stdio
 
 ```json
 {"op":"room.status"}
-{"op":"connect","seat":1,"name":"agente"}
+{"op":"connect","seat":2,"name":"agente"}
 {"op":"input","axes":{"ly":-1},"durationMs":800}
 {"op":"input","buttons":["a"],"durationMs":120}
 {"op":"release"}

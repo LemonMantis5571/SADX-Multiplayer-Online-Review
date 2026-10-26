@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 import { resolveFfmpeg } from './lib/video.mjs';
 import { chooseBackend } from './lib/gpu.mjs';
+import { HOST_SEAT } from './lib/rooms.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.join(HERE, 'server.mjs');
@@ -23,6 +24,7 @@ const SETTINGS = path.join(STATE_DIR, 'settings.json'); // what `up` reuses: roo
 const DIST_MODS = path.join(path.dirname(HERE), 'dist', 'mods'); // the built mod and what it needs, for `setup`
 const BUTTONS = ['a', 'b', 'x', 'y', 'up', 'down', 'left', 'right', 'lb', 'rb', 'lt', 'rt', 'start', 'back'];
 const AXES = ['lx', 'ly', 'rx', 'ry'];
+const FIRST_GUEST_SEAT = HOST_SEAT + 1; // the host PC plays HOST_SEAT; browsers start after it
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -68,7 +70,7 @@ Game and mod:
   node gateway/agent-cli.mjs mod neutral [--port 27016]
 
 Browser controls and evidence:
-  node gateway/agent-cli.mjs pad --seat 1 --buttons a --ly -1 --duration 1000
+  node gateway/agent-cli.mjs pad --seat 2 --buttons a --ly -1 --duration 1000
   node gateway/agent-cli.mjs capture [frame.jpg] [--url http://127.0.0.1:8080]
   node gateway/agent-cli.mjs doctor [--url http://127.0.0.1:8080]
   node gateway/agent-cli.mjs test
@@ -588,7 +590,7 @@ async function pad(opts) {
   const url = baseUrl(opts.url);
   const status = await getStatus(url);
   const code = String(opts.code || status.room.code).toUpperCase();
-  const requestedSeat = clamp(Number(opts.seat || 1), 1, status.seats || 4);
+  const requestedSeat = clamp(Number(opts.seat || FIRST_GUEST_SEAT), 1, status.seats || 4);
   const durationMs = durationFrom(opts, 500);
   const intervalMs = intervalFrom(opts);
   const state = makePad(opts);
@@ -625,7 +627,7 @@ async function openAgentSession(opts, context) {
   const url = baseUrl(opts.url);
   const status = await getStatus(url);
   const code = String(opts.code || status.room.code).toUpperCase();
-  const seat = clamp(Number(opts.seat || 1), 1, status.seats || 4);
+  const seat = clamp(Number(opts.seat || FIRST_GUEST_SEAT), 1, status.seats || 4);
   const session = await connectSeat(url, code, seat, opts.name || 'ai-agent');
   const pingTimer = setInterval(() => {
     if (session.ws.readyState !== WebSocket.OPEN) {
