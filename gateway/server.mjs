@@ -342,8 +342,10 @@ function main() {
         const [event, value] = line.trim().split(' ');
         if (event === 'restored') log(`[vídeo] la ventana del juego estaba ${value === 'maximized' ? 'maximizada' : 'minimizada'}: vuelve a su tamaño sin quitar el foco`);
         if (event === 'size') {
-          // A new size after the first one: the running capture would crop or pad the new picture.
-          if (size && size !== value) { log(`[vídeo] la ventana del juego cambió a ${value}: reinicio la captura`); hub.encoder.restart(); }
+          // Crops are in window pixels and a running capture keeps its first size: the views follow the window.
+          const [w, h] = value.split('x').map(Number);
+          if (size && size !== value) log(`[vídeo] la ventana del juego cambió a ${value}: reinicio la captura`);
+          hub.setWindowSize(w, h);
           size = value;
         }
       }

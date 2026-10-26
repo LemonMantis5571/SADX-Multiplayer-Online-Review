@@ -1,9 +1,12 @@
 // Who gets which video frame, and when.
 //
-// One ffmpeg encodes several views of the game window on the GPU (h264.mjs):
-// 'alta' (the whole window, 720p60), 'baja' (the whole window, 480p30, a third of
-// the bitrate) and, in split-screen, 'p1'..'p4' (each player's part of the
-// window at its own resolution, 60 fps). A viewer watches either the whole game
+// Each view of the game window is its own encoder (h264.mjs), cropped and scaled
+// on the GPU: 'alta' (the whole window, 720p60), 'baja' (the whole window, 480p30,
+// a third of the bitrate) and, in split-screen, 'p1'..'p4' (each player's part of
+// the window at its own resolution, 60 fps). A view runs only while someone
+// watches it (it stops after a quiet while), so a room where everyone looks at
+// their own screen doesn't also encode the whole game. Which encoder and GPU do
+// the work is lib/gpu.mjs's choice for this PC. A viewer watches either the whole game
 // ('all') or one player's screen ('p1'..'p4', 'mine' = their own seat's). At the
 // high level that is 'alta' or the player's own view; at the low level it is
 // 'baja', which the page crops to the player's part itself.
@@ -20,7 +23,9 @@
 //
 // JPEG, for browsers without WebCodecs, is stop-and-wait: the next frame only
 // goes out once the previous one was acknowledged.
-import { H264Encoder } from './h264.mjs';
+import { H264View } from './h264.mjs';
+import { chooseBackend } from './gpu.mjs';
+import { resolveFfmpeg, windowSelector } from './video.mjs';
 
 export const VIDEO_H264 = 1;
 export const VIDEO_JPEG = 2;
@@ -35,6 +40,7 @@ const DROP_WINDOW_MS = 10000;
 const DOWNGRADE_DROPS = 2;      // skips within the window that move an 'auto' viewer down
 const UPGRADE_AFTER_MS = 20000; // quiet time on the low level before trying the high one again
 const UPGRADE_MAX_MS = 180000;
+const IDLE_STOP_MS = 15000;     // a view nobody has watched for this long stops encoding
 
 /** The mod's split-screen layouts (splitscreen.cpp), as [x, y, w, h] fractions per player. */
 export function layoutFor(count, horizontal = false) {
@@ -67,40 +73,94 @@ export class VideoHub {
     this.log = log;
     this.jpeg = jpeg;
     this.seatOf = seatOf; // conn -> seat number or null, for 'mine'
+    this.ffmpeg = resolveFfmpeg(ffmpeg);
+    this.selector = windowSelector(source);
+    this.forcedEncoder = encoder;
     this.fps = fps;
     this.settings = { height, bitrate, lowHeight, lowBitrate, playerHeight, playerBitrate };
     this.screens = {};   // p1..p4 -> [x, y, w, h]: the last split-screen layout the mod reported
     this.split = false;  // split-screen on right now (off in menus and cutscenes)
+    this.window = { width: 1280, height: 960 }; // the game window's client area (game-window.ps1 reports it)
     this.viewers = new Map(); // conn -> viewer
-    this.encoder = new H264Encoder({ ffmpeg, source, fps, encoder, log });
-    this.encoder.on('track', (track) => track.on('frame', (au, key) => this._onFrame(track.name, au, key)));
-    this.encoder.setViews(this._views());
+    this.views = new Map();   // name -> H264View
+    this.lastUse = new Map(); // name -> last time a viewer was on it
+    this.backend = null;      // what encodes (lib/gpu.mjs), once chosen
+    this.failedBackends = [];
+    this.choosing = null;
+    this.stopped = false;
     this.timer = setInterval(() => this._evaluate(), 1000);
   }
 
-  _views() {
+  /** What each view is: the whole game (two qualities) and each player's part of the split screen. */
+  _definition(name) {
     const s = this.settings;
-    // The low level runs at half the rate: framestep passes every other frame on at once (fps would hold one back).
-    const views = [
-      { name: 'alta', height: s.height, bitrate: s.bitrate },
-      { name: 'baja', height: s.lowHeight, bitrate: s.lowBitrate, step: this.fps > 30 ? 2 : 1 },
-    ];
-    for (const [name, crop] of Object.entries(this.screens)) {
-      views.push({ name, height: s.playerHeight, bitrate: s.playerBitrate, crop });
-    }
-    return views;
+    const cpu = this.backend?.mode === 'cpu';
+    if (name === 'alta') return { height: s.height, bitrate: s.bitrate, fps: cpu ? Math.min(this.fps, 30) : this.fps, crop: null };
+    if (name === 'baja') return { height: s.lowHeight, bitrate: s.lowBitrate, fps: Math.min(this.fps, 30), crop: null };
+    const crop = this.screens[name];
+    return crop ? { height: s.playerHeight, bitrate: s.playerBitrate, fps: this.fps, crop } : null;
   }
 
+  /** The view's encoder, created on first use; started if it isn't running. */
+  _ensure(name) {
+    this.lastUse.set(name, Date.now());
+    if (!this.backend || !this.selector) return null;
+    const def = this._definition(name);
+    if (!def) return null;
+    let view = this.views.get(name);
+    if (!view) {
+      view = new H264View({ name, ...def, selector: this.selector, ffmpeg: this.ffmpeg, log: this.log });
+      view.window = { ...this.window };
+      view.on('frame', (au, key) => this._onFrame(name, au, key));
+      view.on('failed', (error) => this._backendFailed(error));
+      this.views.set(name, view);
+    }
+    if (!view.running && !view.wanted) this.log(`[vídeo] empiezo a codificar «${name}»`);
+    view.start(this.backend);
+    return view;
+  }
+
+  /** Picks the encoder for this PC (once), then starts whatever viewers already wait for. */
   start() {
-    this.encoder.start();
+    if (this.choosing || this.backend || this.stopped) return this.choosing;
+    this.choosing = chooseBackend(this.ffmpeg, { forced: this.forcedEncoder, skip: this.failedBackends, log: this.log })
+      .then((backend) => {
+        this.choosing = null;
+        if (this.stopped) return;
+        if (!backend) { this.log('[vídeo] ningún codificador funciona en esta PC'); return; }
+        this.backend = backend;
+        for (const v of this.viewers.values()) if (v.codec === 'h264') this._route(v, true);
+      });
+    return this.choosing;
+  }
+
+  /** The chosen backend gave no picture with the real capture: try the next one for every view. */
+  _backendFailed(error) {
+    if (!this.backend || this.choosing) return;
+    this.log(`[vídeo] ${this.backend.key} no funciona con la captura real (${error}); pruebo el siguiente`);
+    this.failedBackends.push(this.backend.key);
+    this.backend = null;
+    const running = [...this.views.entries()].filter(([, view]) => view.wanted).map(([name]) => name);
+    for (const view of this.views.values()) view.stop();
+    this.start()?.then(() => { for (const name of running) this._ensure(name); });
   }
 
   get running() {
-    return this.encoder.running;
+    return [...this.views.values()].some((view) => view.running);
   }
 
   get lastFrameAt() {
-    return this.encoder.lastFrameAt;
+    return Math.max(0, ...[...this.views.values()].map((view) => view.lastFrameAt));
+  }
+
+  /** The game window's size (game-window.ps1): crops are in its pixels, so running views start again. */
+  setWindowSize(width, height) {
+    if (!width || !height || (width === this.window.width && height === this.window.height)) return;
+    this.window = { width, height };
+    for (const view of this.views.values()) {
+      view.window = { ...this.window };
+      if (view.wanted) view.restart(this.backend);
+    }
   }
 
   /**
@@ -113,7 +173,11 @@ export class VideoHub {
       if (JSON.stringify(next) !== JSON.stringify(this.screens)) {
         this.screens = next;
         this.log(`[vídeo] pantalla dividida: ${Object.keys(next).length} jugadores`);
-        this.encoder.setViews(this._views());
+        for (const [name, view] of this.views) {
+          const def = this._definition(name);
+          if (!def) { view.stop(); this.views.delete(name); continue; }
+          if (view.configure(def) && view.wanted) view.restart(this.backend);
+        }
       }
     }
     if (split !== undefined && Boolean(split) !== this.split) {
@@ -220,8 +284,10 @@ export class VideoHub {
   _route(v, force = false) {
     const player = this._playerView(v);
     let track = v.level === 1 ? 'baja' : 'alta';
-    if (player && v.level === 0 && this.encoder.encoding(player)) track = player;
+    // Without a GPU encoder, players' screens aren't encoded on their own: the page crops the whole game.
+    if (player && v.level === 0 && this.backend?.mode !== 'cpu') track = player;
     const crop = player && track !== player ? this.screens[player] : null;
+    this._ensure(track);
     if (!force && track === v.track && JSON.stringify(crop) === JSON.stringify(v.crop)) return;
     v.track = track;
     v.crop = crop;
@@ -288,6 +354,7 @@ export class VideoHub {
       if (v.conn.closed) { this.unsubscribe(v.conn); continue; }
       v.drops = v.drops.filter((t) => now - t < DROP_WINDOW_MS);
       if (v.codec === 'h264') {
+        if (v.track) this.lastUse.set(v.track, now);
         if (v.mode === 'auto' && !v.conn.rtc?.connected) {
           if (v.level === 0 && v.drops.length >= DOWNGRADE_DROPS) {
             // Failing again soon after an upgrade: wait longer before the next try.
@@ -316,11 +383,24 @@ export class VideoHub {
         drops: v.drops.length,
       });
     }
+    // Views nobody watches stop encoding (one viewer moving to another view, or everyone leaving).
+    for (const [name, view] of this.views) {
+      if (view.wanted && now - (this.lastUse.get(name) || 0) > IDLE_STOP_MS) {
+        this.log(`[vídeo] nadie mira «${name}»: dejo de codificarla`);
+        view.stop();
+      }
+    }
   }
 
   status() {
     return {
-      ...this.encoder.status(),
+      running: this.running,
+      encoder: this.backend ? `${this.backend.encoder} (${this.backend.mode})` : this.choosing ? 'eligiendo…' : 'ninguno',
+      gpu: this.backend?.gpu ?? null,
+      lastError: [...this.views.values()].map((view) => view.lastError).find(Boolean) ?? null,
+      lastFrameAt: this.lastFrameAt || null,
+      window: this.window,
+      views: Object.fromEntries([...this.views.entries()].map(([name, view]) => [name, view.status()])),
       split: this.split,
       screens: this.screens,
       viewers: [...this.viewers.values()].map((v) => ({
@@ -342,8 +422,9 @@ export class VideoHub {
   }
 
   stop() {
+    this.stopped = true;
     clearInterval(this.timer);
     this.viewers.clear();
-    this.encoder.stop();
+    for (const view of this.views.values()) view.stop();
   }
 }

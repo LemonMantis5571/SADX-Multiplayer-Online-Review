@@ -10,7 +10,7 @@ entran como espectadoras y pueden tomar un puesto cuando alguien lo libere.
 navegador ── WebSocket (túnel) ─────────► sala (server.mjs) ── UDP local ──► SADX + mod
    ▲  ▲                                     │       ▲                          │
    │  └── WebRTC directo (si es más rápido) ┤       └── sonido (mod, UDP) ◄────┤
-   └───── vídeo H.264 + sonido Opus ◄───────┴──── ffmpeg gfxcapture + NVENC ◄──┘
+   └───── vídeo H.264 + sonido Opus ◄───────┴──── una captura + codificador de GPU por vista ◄─┘
 ```
 
 ## Un clic
@@ -44,9 +44,12 @@ la misma sala. Para reiniciar solo la sala sin cortar el enlace ni el juego:
      640 × 480, la resolución original.
    - `"RenderBackend": 1` (Direct3D 9). Con el 2 (Direct3D 11 con transparencia
      OIT) SADX iba entre 6 y 47 fps según el momento, con la GPU al 100 %; con
-     Direct3D 9 va estable a 47–50 fps (la captura de Windows a 60 Hz es el techo).
+     Direct3D 9 va estable a 50–59 fps (la captura de Windows a 60 Hz es el techo).
      VSync lo empeora (41–46), así que queda apagado.
-   - El mod `sadx-frame-limit` habilitado (limitador de cuadros preciso).
+   - Sin `sadx-frame-limit` (si estaba, lo desactiva): su espera activa gastaba
+     un núcleo entero (SADX 1,2 núcleos con él, 0,4–0,5 sin él) con los mismos fps.
+   - `setup --light`: ventana de 960 × 720 (cada jugador ve 480 × 360) para
+     integradas flojas.
 3. `cloudflared` para el enlace público:
    `winget install --id Cloudflare.cloudflared --exact`. Las personas que entran
    solo necesitan el navegador.
@@ -108,8 +111,10 @@ tres veces en dos minutos).
 
 ## Vídeo
 
-Un solo ffmpeg captura la ventana una vez (`gfxcapture`, hasta 60 fps) y
-codifica con NVENC varias vistas a la vez, cada una a su propio socket local:
+Cada vista es su propio ffmpeg con su propia captura de la ventana (`gfxcapture`,
+Windows Graphics Capture, hasta 60 fps), que recorta y escala en la GPU. Una vista
+solo se codifica mientras alguien la mira y se apaga a los 15 s sin público: en
+una sala donde cada uno mira su pantalla no se codifica también la partida entera.
 
 | vista | qué es | por defecto |
 | --- | --- | --- |
@@ -120,7 +125,19 @@ codifica con NVENC varias vistas a la vez, cada una a su propio socket local:
 Las pantallas de los jugadores se recortan con el diseño de pantalla dividida
 que informa el mod (cambia con el número de jugadores; con dos, mitades
 verticales). En menús y escenas sin pantalla dividida todos ven la partida entera.
-Sin GPU NVIDIA usa libx264 solo para «toda la partida».
+
+**Qué codifica** (`lib/gpu.mjs` lo elige al abrir la sala y lo prueba con unos
+cuadros sintéticos; si con la captura real no sale imagen, pasa al siguiente):
+
+| GPU | cómo llega el cuadro | CPU por vista (60 fps) |
+| --- | --- | --- |
+| NVIDIA (NVENC) | la textura de la captura entra tal cual al codificador | 0,05–0,07 núcleos |
+| AMD (AMF, también integradas Radeon) | cuadro ya escalado copiado a memoria; AMF convierte y codifica en la GPU | 0,06–0,12 núcleos |
+| Intel (Quick Sync) | textura mapeada a Quick Sync y convertida allí (sin probar: no hay Intel en la PC de pruebas) | — |
+| ninguna | libx264 en la CPU, solo la partida entera a 30 fps | alto |
+
+`--encoder h264_amf` (o `h264_qsv`, `libx264`) fuerza uno; `doctor` y el panel
+dicen cuál se usa.
 
 Configuración de baja latencia: sin B-frames ni lookahead, cada cuadro se manda
 en cuanto sale y hay un cuadro clave por segundo. Cada cuadro viaja como mensaje
@@ -141,9 +158,27 @@ a su tamaño normal sin quitar el foco si se minimiza (no dibuja) o se maximiza
 (SADX baja a unos 8 fps a 1920 × 1009), y la sala reinicia la captura si cambia
 de tamaño.
 
+### Rendimiento
+
+Medido en la PC de pruebas (Ryzen con Radeon 780M integrada + RTX 3060 Ti), con un
+espectador y el juego en 4 jugadores:
+
+| | antes | ahora |
+| --- | --- | --- |
+| SADX | 1,2 núcleos (con `sadx-frame-limit`) | 0,4–0,5 |
+| vídeo | 0,85 núcleos (copia y conversión de 6 vistas en la CPU) | 0,02–0,06 (una vista, en la GPU) |
+| sala (Node) | ~0,03 | ~0,03 |
+| total | ~2,1 núcleos | ~0,6 |
+
+Del botón a la imagen, en la misma PC: ≈70 ms con NVENC, ≈110 ms con AMF en la
+integrada (aquí el juego se dibuja en la NVIDIA y la captura cruza de una GPU a
+otra; en una PC solo con integrada ese cruce no existe). La sala en Node gasta tan
+poco que reescribirla (en Rust u otro lenguaje) no cambiaría nada: lo pesado es
+el juego, y la captura y el codificador ya son código nativo en la GPU.
+
 Opciones de `room start` / `server.mjs`: `--fps`, `--height`, `--bitrate`
 (alta), `--low-height`, `--low-bitrate`, `--player-height`, `--player-bitrate`,
-`--encoder auto|h264_nvenc|libx264|h264_amf`, `--quality` (JPEG), `--room`,
+`--encoder auto|h264_nvenc|h264_amf|h264_qsv|libx264`, `--quality` (JPEG), `--room`,
 `--password`, `--no-audio`, `--no-rtc`, `--no-game`. Los navegadores sin
 WebCodecs reciben JPEG uno a la vez (máximo 20 fps); `/api/frame.jpg` sigue
 disponible para `capture` y `doctor`.

@@ -1,17 +1,16 @@
-// H.264 encoding of the game window for the browser.
+// H.264 encoding of the game window for the browser: one view, one ffmpeg.
 //
-// One ffmpeg captures the SADX window once (gfxcapture) and encodes several views
-// of it with NVENC (libx264 when there is no NVIDIA GPU): the whole window in two
-// qualities and, in split-screen, each player's part of the window on its own.
-// Every view is tuned for latency (no B-frames, no lookahead, output flushed
-// after every frame, a keyframe every second) and written to its own local TCP
-// socket. Each view's Annex B stream gets an AUD before every frame, so it splits
-// into one access unit per frame; its H264Track emits each one as a 'frame' event
-// and keeps the current GOP. Who gets which frame is VideoHub's job (videohub.mjs).
-import net from 'node:net';
+// Each view (the whole game in two qualities, or one player's part of the split screen) is its own
+// ffmpeg process with its own gfxcapture, which crops and scales the window on the GPU; what follows
+// depends on the backend lib/gpu.mjs picked for this PC (on NVIDIA the captured texture goes straight
+// into NVENC). Separate processes let views start when someone watches them and stop when nobody does,
+// without disturbing the others. Every view is tuned for latency (no B-frames, no lookahead, output
+// flushed after every frame, a keyframe every second) and its Annex B stream gets an AUD before every
+// frame, so it splits into one access unit per frame: each one is emitted as a 'frame' event and the
+// current GOP is kept. Who gets which frame is VideoHub's job (videohub.mjs).
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { resolveFfmpeg, captureInput } from './video.mjs';
+import { ENCODE_ARGS, captureTail, deviceArgs } from './gpu.mjs';
 
 const MAX_BUFFER = 8 << 20;
 const MAX_GOP = 240;
@@ -37,79 +36,192 @@ function findAud(buf, from) {
   return -1;
 }
 
+const even = (n) => Math.max(2, Math.round(n / 2) * 2);
+
 /**
- * One view of the window: `height` (never upscaled), `bitrate` in kbps, `step` (2 = every other
- * captured frame) and `crop` ([x, y, w, h] as fractions of the window, or null for all of it).
+ * One view of the window: `crop` ([x, y, w, h] as fractions, or null for all of it), `height` (never
+ * upscaled), `bitrate` in kbps and `fps` (the capture's own rate cap).
  */
-export class H264Track extends EventEmitter {
-  constructor({ name, height, bitrate, step = 1, crop = null }) {
+export class H264View extends EventEmitter {
+  constructor({ name, crop = null, height, bitrate, fps, selector, ffmpeg, log = console.log }) {
     super();
     this.name = name;
-    this.configure({ height, bitrate, step, crop });
+    this.selector = selector; // gfxcapture's window selector
+    this.ffmpeg = ffmpeg;
+    this.log = log;
+    this.configure({ crop, height, bitrate, fps });
+    this.backend = null;
+    this.window = { width: 1280, height: 960 };
+    this.proc = null;
+    this.wanted = false;
+    this.restartTimer = null;
+    this.restarts = 0;
     this.gop = [];
     this.buf = Buffer.alloc(0);
+    this.scanFrom = 0;
     this.frames = 0;
     this.bytes = 0;
     this.lastFrameAt = 0;
     this.startedAt = 0;
     this.framesAtStart = 0;
     this.bytesAtStart = 0;
+    this.lastError = null;
   }
 
-  configure({ height, bitrate, step = 1, crop = null }) {
+  /** New settings; true when they differ (a running view then needs a restart). */
+  configure({ crop = null, height, bitrate, fps }) {
+    const before = JSON.stringify([this.crop, this.height, this.bitrate, this.fps]);
+    this.crop = crop;
     this.height = height;
     this.bitrate = bitrate;
-    this.step = step;
-    this.crop = crop;
+    this.fps = fps;
+    return JSON.stringify([this.crop, this.height, this.bitrate, this.fps]) !== before;
   }
 
-  /** What has to match for a running encoder to keep this view as it is. */
-  get signature() {
-    return JSON.stringify([this.height, this.bitrate, this.step, this.crop]);
+  get running() {
+    return this.proc !== null;
   }
 
-  reset() {
-    this.gop = [];
-    this.buf = Buffer.alloc(0);
+  /** gfxcapture's options: the crop in window pixels, and the size to scale to (on the GPU). */
+  captureOptions() {
+    const W = this.window.width;
+    const H = this.window.height;
+    const parts = [this.selector, 'capture_cursor=0', `max_framerate=${this.fps}`];
+    let w = W;
+    let h = H;
+    if (this.crop) {
+      const [x, y, cw, ch] = this.crop;
+      const left = Math.round(x * W);
+      const top = Math.round(y * H);
+      const right = Math.max(0, W - Math.round((x + cw) * W));
+      const bottom = Math.max(0, H - Math.round((y + ch) * H));
+      parts.push(`crop_left=${left}`, `crop_top=${top}`, `crop_right=${right}`, `crop_bottom=${bottom}`);
+      w = W - left - right;
+      h = H - top - bottom;
+    }
+    // Only a smaller picture is asked for; otherwise the capture keeps the window's (cropped) size.
+    if (h > this.height) {
+      parts.push(`width=${even((w * this.height) / h)}`, `height=${even(this.height)}`, 'resize_mode=scale', 'scale_mode=bilinear');
+    }
+    return parts.join(':');
+  }
+
+  args() {
+    const rate = `${this.bitrate}k`;
+    return [
+      '-hide_banner', '-loglevel', 'error',
+      ...deviceArgs(this.backend),
+      '-filter_complex', `gfxcapture=${this.captureOptions()}${captureTail(this.backend)}[v]`,
+      '-map', '[v]',
+      ...ENCODE_ARGS[this.backend.encoder],
+      // A keyframe every second of real time (the capture's rate varies with the game's).
+      '-bf', '0', '-g', String(Math.max(1, this.fps)), '-force_key_frames', 'expr:gte(t,n_forced*1)',
+      '-b:v', rate, '-maxrate', rate, '-bufsize', `${Math.round(this.bitrate / 3)}k`,
+      '-bsf:v', 'dump_extra=freq=keyframe,h264_metadata=aud=insert',
+      '-fps_mode', 'passthrough', '-flush_packets', '1', '-muxdelay', '0',
+      '-f', 'h264', 'pipe:1',
+    ];
+  }
+
+  /** Starts encoding (when the backend and the window are known); a view that's wanted keeps restarting. */
+  start(backend = this.backend) {
+    this.wanted = true;
+    this.backend = backend;
+    if (this.proc || !this.backend || this.restartTimer) return;
+    const args = this.args();
+    this.log(`[h264 ${this.name}] ${this.ffmpeg} ${args.join(' ')}`);
+    let proc;
+    try {
+      proc = spawn(this.ffmpeg, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    } catch (err) {
+      this.lastError = err.message;
+      return;
+    }
+    this.proc = proc;
     this.startedAt = Date.now();
     this.framesAtStart = this.frames;
     this.bytesAtStart = this.bytes;
+    this.buf = Buffer.alloc(0);
+    this.scanFrom = 0;
+    this.pending = null;
+    this.gop = [];
+    let produced = false;
+
+    proc.stdout.on('data', (chunk) => { produced = true; this._onData(chunk); });
+    proc.stderr.on('data', (chunk) => {
+      const text = chunk.toString('utf8').trim();
+      if (text) {
+        this.lastError = text.split('\n').slice(-1)[0];
+        this.log(`[h264 ${this.name}] ffmpeg: ${this.lastError}`);
+      }
+    });
+    proc.on('error', (err) => { this.lastError = err.message; });
+    proc.on('exit', (code) => {
+      if (this.proc === proc) this.proc = null;
+      if (!this.wanted) return;
+      // No output at all (the backend doesn't work with the real capture): the hub picks another one.
+      if (!produced && code !== 0) this.emit('failed', this.lastError);
+      if (produced) this.restarts = 0;
+      this.restarts += 1;
+      this.restartTimer = setTimeout(() => {
+        this.restartTimer = null;
+        if (this.wanted) this.start();
+      }, Math.min(5000, 1000 * this.restarts));
+    });
   }
 
-  filter(pixfmt) {
-    const parts = [];
-    if (this.step > 1) parts.push(`framestep=${this.step}`);
-    if (this.crop) {
-      const [x, y, w, h] = this.crop;
-      parts.push(`crop=w=iw*${w}:h=ih*${h}:x=iw*${x}:y=ih*${y}`);
+  stop() {
+    this.wanted = false;
+    if (this.restartTimer) { clearTimeout(this.restartTimer); this.restartTimer = null; }
+    if (this.proc) {
+      const proc = this.proc;
+      this.proc = null;
+      try { proc.kill(); } catch { /* ya terminó */ }
     }
-    parts.push(`scale=w=-2:h=min(${this.height}\\,ih)`, `format=${pixfmt}`);
-    return parts.join(',');
+  }
+
+  /** Stop and start again (new crop, window size or backend); the next frame out is a keyframe. */
+  restart(backend = this.backend) {
+    const wanted = this.wanted;
+    this.stop();
+    this.backend = backend;
+    if (wanted) this.start(backend);
   }
 
   _onData(chunk) {
     this.buf = this.buf.length ? Buffer.concat([this.buf, chunk]) : chunk;
     if (this.buf.length > MAX_BUFFER) {
       this.buf = Buffer.alloc(0);
+      this.scanFrom = 0;
       return;
     }
-    // Every access unit starts with an AUD; one ends where the next one starts.
+    // Every access unit starts with an AUD; one ends where the next one starts. The scan resumes where
+    // the last one stopped instead of going over the whole buffer again for every chunk.
     for (;;) {
       const start = findAud(this.buf, 0);
       if (start < 0) return;
-      const next = findAud(this.buf, start + 4);
+      const next = findAud(this.buf, Math.max(start + 4, this.scanFrom));
       if (next < 0) {
         if (start > 0) this.buf = this.buf.subarray(start);
+        this.scanFrom = Math.max(0, this.buf.length - 5);
         return;
       }
       const au = Buffer.from(this.buf.subarray(start, next));
       this.buf = this.buf.subarray(next);
+      this.scanFrom = 0;
       this._publish(au);
     }
   }
 
   _publish(au) {
-    const key = nalTypes(au).includes(5);
+    const types = nalTypes(au);
+    // A unit without a picture (headers only, or an encoder's extra delimiter) belongs to the next frame.
+    if (!types.some((t) => t >= 1 && t <= 5)) {
+      this.pending = this.pending ? Buffer.concat([this.pending, au]) : au;
+      return;
+    }
+    if (this.pending) { au = Buffer.concat([this.pending, au]); this.pending = null; }
+    const key = types.includes(5);
     this.frames += 1;
     this.bytes += au.length;
     this.lastFrameAt = Date.now();
@@ -123,232 +235,16 @@ export class H264Track extends EventEmitter {
     const span = Date.now() - this.startedAt;
     const frames = this.frames - this.framesAtStart;
     return {
+      encoding: this.running,
       height: this.height,
       bitrateKbps: this.bitrate,
-      step: this.step,
+      fps: this.fps,
       crop: this.crop,
       frames: this.frames,
       lastFrameAt: this.lastFrameAt || null,
-      measuredFps: this.startedAt && frames > 1 ? Math.round((frames / span) * 1000 * 10) / 10 : null,
-      measuredKbps: this.startedAt && frames > 1 ? Math.round(((this.bytes - this.bytesAtStart) * 8) / span) : null,
-    };
-  }
-}
-
-export class H264Encoder extends EventEmitter {
-  constructor({ ffmpeg = 'ffmpeg', source, fps = 60, encoder = 'auto', log = console.log } = {}) {
-    super();
-    this.ffmpeg = resolveFfmpeg(ffmpeg);
-    this.source = source;
-    this.fps = fps;
-    this.encoders = encoder === 'auto' ? ['h264_nvenc', 'libx264'] : [encoder];
-    this.encoderIndex = 0;
-    this.log = log;
-    this.tracks = new Map(); // name -> H264Track, kept across restarts so listeners stay attached
-    this.active = [];        // tracks the running ffmpeg encodes
-    this.proc = null;
-    this.servers = [];
-    this.restartTimer = null;
-    this.restarts = 0;
-    this.stopped = false;
-    this.starting = false;
-    this.restarting = false;
-    this.startedAt = 0;
-    this.lastError = null;
-  }
-
-  get encoder() {
-    return this.encoders[this.encoderIndex];
-  }
-
-  get running() {
-    return this.proc !== null;
-  }
-
-  get lastFrameAt() {
-    return Math.max(0, ...this.active.map((t) => t.lastFrameAt));
-  }
-
-  track(name) {
-    return this.tracks.get(name) || null;
-  }
-
-  /** Whether `name` is being encoded right now (views cut from the window need NVENC). */
-  encoding(name) {
-    return this.active.some((t) => t.name === name);
-  }
-
-  /**
-   * The views to encode, as [{name, height, bitrate, step, crop}]. A view that keeps its name keeps
-   * its H264Track. Restarts ffmpeg (a second without video) only when something actually changed.
-   */
-  setViews(views) {
-    let changed = false;
-    const keep = new Set();
-    for (const view of views) {
-      keep.add(view.name);
-      const existing = this.tracks.get(view.name);
-      if (!existing) {
-        const track = new H264Track(view);
-        this.tracks.set(view.name, track);
-        this.emit('track', track);
-        changed = true;
-        continue;
-      }
-      const before = existing.signature;
-      existing.configure(view);
-      if (existing.signature !== before) changed = true;
-    }
-    for (const name of [...this.tracks.keys()]) {
-      if (!keep.has(name)) { this.tracks.delete(name); changed = true; }
-    }
-    if (changed && (this.proc || this.restartTimer)) this.restart();
-    return changed;
-  }
-
-  /** Without NVENC, encoding several views at 60 fps on the CPU would starve the game: whole window only. */
-  _plannedTracks() {
-    const all = [...this.tracks.values()];
-    if (this.encoder === 'h264_nvenc') return all;
-    return all.filter((t) => !t.crop);
-  }
-
-  _encodeArgs(track) {
-    const rate = `${track.bitrate}k`;
-    const gop = String(Math.max(1, Math.round(this.fps / track.step)));
-    const encode = this.encoder === 'h264_nvenc'
-      ? ['-c:v', 'h264_nvenc', '-preset', 'p1', '-tune', 'ull', '-zerolatency', '1', '-delay', '0',
-         '-rc', 'cbr', '-rc-lookahead', '0', '-forced-idr', '1']
-      : ['-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-x264-params', 'repeat-headers=1:sliced-threads=1'];
-    return [
-      ...encode,
-      '-profile:v', 'baseline', '-bf', '0', '-g', gop,
-      '-b:v', rate, '-maxrate', rate, '-bufsize', `${Math.round(track.bitrate / 3)}k`,
-      '-bsf:v', 'dump_extra=freq=keyframe,h264_metadata=aud=insert',
-      '-fps_mode', 'passthrough', '-flush_packets', '1', '-muxdelay', '0',
-    ];
-  }
-
-  async start() {
-    if (this.proc || this.stopped || this.starting) return;
-    this.starting = true;
-    try {
-      await this._start();
-    } finally {
-      this.starting = false;
-    }
-  }
-
-  async _start() {
-    const tracks = this._plannedTracks();
-    if (!tracks.length) return;
-    // One local socket per view: ffmpeg connects to each when it opens its outputs.
-    this.servers = await Promise.all(tracks.map((track) => new Promise((resolve, reject) => {
-      const server = net.createServer((socket) => {
-        socket.setNoDelay(true);
-        socket.on('data', (chunk) => track._onData(chunk));
-        socket.on('error', () => {});
-      });
-      server.once('error', reject);
-      server.listen(0, '127.0.0.1', () => resolve(server));
-    })));
-    if (this.stopped) { this._closeServers(); return; }
-
-    const pixfmt = this.encoder === 'h264_nvenc' ? 'nv12' : 'yuv420p';
-    const graph = `[0:v]split=${tracks.length}${tracks.map((_, i) => `[s${i}]`).join('')};` +
-      tracks.map((t, i) => `[s${i}]${t.filter(pixfmt)}[v${i}]`).join(';');
-    const args = [
-      '-hide_banner', '-loglevel', 'error',
-      // The capture itself is capped at the stream's rate: an fps filter would hold a frame back.
-      ...captureInput(this.source, this.fps, this.fps),
-      '-filter_complex', graph,
-    ];
-    tracks.forEach((track, i) => {
-      args.push('-map', `[v${i}]`, ...this._encodeArgs(track), '-f', 'h264', `tcp://127.0.0.1:${this.servers[i].address().port}?tcp_nodelay=1`);
-    });
-    this.log(`[h264] ${this.encoder}: ${tracks.map((t) => t.name).join(', ')}`);
-    this.log(`[h264] ${this.ffmpeg} ${args.join(' ')}`);
-
-    let proc;
-    try {
-      proc = spawn(this.ffmpeg, args, { stdio: ['ignore', 'ignore', 'pipe'] });
-    } catch (err) {
-      this.lastError = err.message;
-      this._closeServers();
-      return;
-    }
-    this.proc = proc;
-    this.active = tracks;
-    this.startedAt = Date.now();
-    const framesBefore = tracks.map((t) => t.frames);
-    for (const track of tracks) track.reset();
-
-    proc.stderr.on('data', (chunk) => {
-      const text = chunk.toString('utf8').trim();
-      if (text) {
-        this.lastError = text.split('\n').slice(-1)[0];
-        this.log(`[h264] ffmpeg: ${this.lastError}`);
-      }
-    });
-    proc.on('error', (err) => { this.lastError = err.message; });
-    proc.on('exit', (code) => {
-      if (this.proc === proc) this.proc = null;
-      this.active = [];
-      this._closeServers();
-      if (this.stopped || this.restarting) return;
-      const produced = tracks.some((t, i) => t.frames > framesBefore[i]);
-      if (produced) this.restarts = 0;
-      // No output at all from this encoder (no NVIDIA GPU, driver issue): try the next one.
-      if (!produced && code !== 0 && this.encoderIndex + 1 < this.encoders.length && /nvenc|encoder|device|driver|session/i.test(this.lastError || '')) {
-        this.log(`[h264] ${this.encoder} no disponible; uso ${this.encoders[this.encoderIndex + 1]}`);
-        this.encoderIndex += 1;
-      }
-      this.restarts += 1;
-      this.log(`[h264] ffmpeg terminó (código ${code})`);
-      this.restartTimer = setTimeout(() => {
-        this.restartTimer = null;
-        this.start();
-      }, Math.min(5000, 1000 * this.restarts));
-    });
-  }
-
-  /** New views: stop the running ffmpeg and start one with the current set. */
-  restart() {
-    if (this.restartTimer) { clearTimeout(this.restartTimer); this.restartTimer = null; }
-    const proc = this.proc;
-    if (!proc) { this.start(); return; }
-    this.restarting = true;
-    proc.once('exit', () => {
-      this.restarting = false;
-      this.start();
-    });
-    try { proc.kill(); } catch { /* ya terminó */ }
-  }
-
-  _closeServers() {
-    for (const server of this.servers) { try { server.close(); } catch { /* cerrado */ } }
-    this.servers = [];
-  }
-
-  status() {
-    return {
-      running: this.proc !== null,
-      encoder: this.encoder,
-      fps: this.fps,
-      restarts: this.restarts,
       lastError: this.lastError,
-      lastFrameAt: this.lastFrameAt || null,
-      views: Object.fromEntries([...this.tracks.values()].map((t) => [t.name, { ...t.status(), encoding: this.active.includes(t) }])),
+      measuredFps: this.running && this.startedAt && frames > 1 ? Math.round((frames / span) * 1000 * 10) / 10 : null,
+      measuredKbps: this.running && this.startedAt && frames > 1 ? Math.round(((this.bytes - this.bytesAtStart) * 8) / span) : null,
     };
-  }
-
-  stop() {
-    this.stopped = true;
-    if (this.restartTimer) clearTimeout(this.restartTimer);
-    if (this.proc) {
-      try { this.proc.kill(); } catch { /* ya terminó */ }
-      this.proc = null;
-    }
-    this._closeServers();
   }
 }

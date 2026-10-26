@@ -31,25 +31,29 @@ function escapeFilterValue(value) {
   return value.replace(/[\\':]/g, '\\$&').replace(/[\\'\[\],;]/g, '\\$&');
 }
 
-function captureSource(source, maxFps = 60) {
-  if (source === 'desktop') return { mode: 'gdigrab', input: source };
+/** gfxcapture's window selector for a source (exe=, title=, hwnd=), or null for the whole desktop. */
+export function windowSelector(source) {
+  if (source === 'desktop') return null;
 
   const match = /^(?:exe|window_exe|title|window_title|hwnd)=(.*)$/i.exec(source);
   if (!match) throw new Error(`fuente de vídeo no reconocida: ${source}; usa exe=, title=, hwnd= o desktop`);
 
   const kind = source.slice(0, source.indexOf('=')).toLowerCase();
-  let selector;
   if (kind === 'exe' || kind === 'window_exe') {
     let exe = path.win32.basename(match[1]);
     if (!exe.toLowerCase().endsWith('.exe')) exe += '.exe';
-    selector = `window_exe=${escapeFilterValue(exe)}`;
-  } else if (kind === 'hwnd') {
-    if (!/^\d+$/.test(match[1])) throw new Error('hwnd debe ser un número decimal');
-    selector = `hwnd=${match[1]}`;
-  } else {
-    selector = `window_title=${escapeFilterValue(match[1])}`;
+    return `window_exe=${escapeFilterValue(exe)}`;
   }
+  if (kind === 'hwnd') {
+    if (!/^\d+$/.test(match[1])) throw new Error('hwnd debe ser un número decimal');
+    return `hwnd=${match[1]}`;
+  }
+  return `window_title=${escapeFilterValue(match[1])}`;
+}
 
+function captureSource(source, maxFps = 60) {
+  const selector = windowSelector(source);
+  if (!selector) return { mode: 'gdigrab', input: source };
   return {
     mode: 'gfxcapture',
     input: `gfxcapture=${selector}:capture_cursor=0:max_framerate=${maxFps},hwdownload,format=bgra`,

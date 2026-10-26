@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 import { resolveFfmpeg } from './lib/video.mjs';
+import { chooseBackend } from './lib/gpu.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.join(HERE, 'server.mjs');
@@ -39,8 +40,9 @@ Room:
   node gateway/agent-cli.mjs room restart        same code and port; the public link keeps working
 
 Another PC (SADX-Online-instalar.cmd):
-  node gateway/agent-cli.mjs setup --sadx "C:\\...\\Sonic Adventure DX"
-      installs the mods from dist/, tunes the Mod Loader profile (backed up first), checks ffmpeg/cloudflared
+  node gateway/agent-cli.mjs setup --sadx "C:\\...\\Sonic Adventure DX" [--light]
+      installs the mods from dist/, tunes the Mod Loader profile (backed up first), checks ffmpeg/cloudflared;
+      --light: a 960x720 window for weak integrated graphics
 
 One click (SADX-Online.cmd / SADX-Online-cerrar.cmd):
   node gateway/agent-cli.mjs up [--room CODE] [--port 8123] [--level twinklepark] [--no-share] [--no-game] [--no-open]
@@ -91,7 +93,7 @@ Options:
 function parseArgs(argv) {
   const result = { positionals: [], args: [] };
   const bools = new Set(['--no-video', '--human', '--json', '--stdio', '--verify-mod', '--no-multiplayer',
-    '--keep-share', '--no-share', '--no-game', '--no-open', '--quick']);
+    '--keep-share', '--no-share', '--no-game', '--no-open', '--quick', '--light']);
   for (let i = 0; i < argv.length; i += 1) {
     const part = argv[i];
     if (!part.startsWith('--')) {
@@ -917,6 +919,16 @@ const RECOMMENDED_GRAPHICS = {
   EnableVsync: false,           // VSync made the captured rate worse
 };
 
+// Busy-waits a whole core for no visible gain on the stream (SADX: 1.2 cores with it, 0.4-0.5 without,
+// same frame rate): setup turns it off where an earlier version of this project turned it on.
+const UNWANTED_MODS = ['sadx-frame-limit'];
+
+/** --light: a smaller window for weak integrated graphics (each player then sees 480x360). */
+function graphicsFor(opts) {
+  if (!opts.light) return RECOMMENDED_GRAPHICS;
+  return { ...RECOMMENDED_GRAPHICS, HorizontalResolution: 960, VerticalResolution: 720, CustomWindowWidth: 960, CustomWindowHeight: 720 };
+}
+
 /**
  * Prepares a PC to host: installs the mods from dist/ into SADX (the built multiplayer mod with the browser
  * bridge, and the frame limiter), tunes the active Mod Loader profile, remembers where sonic.exe is, and
@@ -961,10 +973,13 @@ async function setup(opts = {}) {
   if (existsSync(profileFile)) {
     backup(profileFile, path.basename(profileFile));
     const profile = JSON.parse(readFileSync(profileFile, 'utf8'));
-    profile.Graphics = { ...(profile.Graphics || {}), ...RECOMMENDED_GRAPHICS };
-    profile.EnabledMods = [...new Set([...(profile.EnabledMods || []), ...mods])];
+    const graphics = graphicsFor(opts);
+    profile.Graphics = { ...(profile.Graphics || {}), ...graphics };
+    const off = (profile.EnabledMods || []).filter((m) => UNWANTED_MODS.includes(m));
+    profile.EnabledMods = [...new Set([...(profile.EnabledMods || []).filter((m) => !UNWANTED_MODS.includes(m)), ...mods])];
     writeFileSync(profileFile, JSON.stringify(profile, null, 2), 'utf8');
-    done.push(`perfil ${path.basename(profileFile)}: ${mods.join(' y ')} activados, ventana 1280x960, Direct3D 9, sin pausa sin foco`);
+    done.push(`perfil ${path.basename(profileFile)}: ${mods.join(' y ')} activado, ventana ${graphics.HorizontalResolution}x${graphics.VerticalResolution}, Direct3D 9, sin pausa sin foco`);
+    if (off.length) done.push(`${off.join(', ')} desactivado (gastaba un núcleo entero sin mejorar los fps)`);
   } else {
     todo.push(`no encontré el perfil del Mod Loader (${profileFile}): abre SA Mod Manager una vez y repite setup`);
   }
@@ -977,8 +992,12 @@ async function setup(opts = {}) {
   else todo.push('ffmpeg 8 o más nuevo (captura de ventanas gfxcapture): winget install --id Gyan.FFmpeg --exact');
   try { done.push(`cloudflared: ${resolveCloudflared()}`); }
   catch { todo.push('cloudflared (enlace público): winget install --id Cloudflare.cloudflared --exact'); }
-  if (spawnSync('nvidia-smi', ['-L'], { encoding: 'utf8', windowsHide: true }).status !== 0) {
-    done.push('sin GPU NVIDIA: el vídeo usará libx264 (más CPU, sin las pantallas por jugador)');
+  if (probe.status === 0) {
+    // The same check the room does when it starts: which GPU and encoder will carry the video here.
+    const backend = await chooseBackend(ffmpeg, { log: () => {} });
+    if (!backend) todo.push('ningún codificador de vídeo funciona con este ffmpeg');
+    else if (backend.mode === 'cpu') done.push('vídeo: sin codificador de GPU, libx264 en la CPU (solo la partida entera, a 30 fps)');
+    else done.push(`vídeo: ${backend.encoder} en ${backend.gpu}`);
   }
   if (!existsSync(path.join(HERE, 'node_modules', 'werift'))) {
     const npm = spawnSync('npm', ['install', '--no-fund', '--no-audit'], { cwd: HERE, encoding: 'utf8', windowsHide: true, shell: true });

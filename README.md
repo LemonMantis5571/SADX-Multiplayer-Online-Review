@@ -11,7 +11,7 @@ instalar nada. Cada jugador puede ver su parte de la pantalla dividida a su prop
 
 ## Preparar una PC anfitriona
 
-Windows 10 2004 o más nuevo, con gráfica NVIDIA (para integradas Intel/AMD ver `gateway/README.md`).
+Windows 10 2004 o más nuevo. Basta una gráfica integrada: la codificación en AMD Radeon está probada (780M); Intel (Quick Sync) está implementada pero sin probar; NVIDIA también. Ver [rendimiento](gateway/README.md#rendimiento).
 
 1. SADX de Steam convertido con el [SADX Mod Installer](https://sadxmodinstaller.unreliable.network/)
    (deja el juego como la versión 2004 e instala SADX Mod Loader y SA Mod Manager). Abre SA Mod Manager una vez.
@@ -34,5 +34,4 @@ ENet) se traen con `git submodule update --init --recursive`.
   `source/`, `include/`, `resources/` y `docs/` es su trabajo. Ese proyecto no publica licencia: este repo es
   privado y no debe publicarse sin su permiso.
 - [SADX Mod Loader](https://github.com/X-Hax/sadx-mod-loader) (X-Hax) y [ENet](https://github.com/lsalzman/enet).
-- [Frame Limit](https://github.com/sonicfreak94/sadx-frame-limit) de SonicFreak94 (MIT), incluido en `dist/mods`.
 - SADX Online: el puente del navegador del mod, el sonido, `gateway/`, el instalador y los lanzadores.
