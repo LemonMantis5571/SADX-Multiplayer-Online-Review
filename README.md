@@ -296,5 +296,14 @@ disassembling `sonic.exe`:
 
 ## License
 
-Private repository, not for redistribution. The base mod is published without a license, so this repository
-and its releases, which include the compiled mod, must stay private.
+Original SADX Online code and documentation authored for this project are licensed under the MIT License; see
+[`LICENSE`](LICENSE). This applies only to our original contributions, including the gateway, project scripts,
+and original source under `mod/src/` and `mod/tools/`.
+
+The MIT License does not cover the `mod/sadx-multiplayer` submodule, upstream-derived material in
+`mod/sadx-multiplayer.patch`, third-party libraries, bundled fonts, compiled mod binaries, textures, or SADX game
+files. Those remain under their own licenses or separate rights-holder permission. The base mod and release
+packages are published under that separate permission, not relicensed by this repository.
+
+The bundled Inter and JetBrains Mono font licenses are included beside the font files in
+`gateway/public/assets/` (`OFL-1.1-Inter.txt` and `OFL-1.1-JetBrains-Mono.txt`).
