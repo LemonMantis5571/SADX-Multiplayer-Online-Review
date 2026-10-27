@@ -27,6 +27,8 @@ export function Stage() {
   const showingDirect = useStore(ui, (s) => s.direct.showing);
   const placeholder = useStore(ui, (s) => s.placeholder);
   const videoWait = useStore(ui, (s) => s.videoWait);
+  const seat = useStore(ui, (s) => s.seat);
+  const seatChanging = useStore(ui, (s) => s.seatChanging);
   const crop = useStore(ui, (s) => s.video.crop);
   const stageName = useStore(ui, (s) => (s.game.online && s.game.stage !== undefined ? STAGES[s.game.stage] : null));
   const tierTag = useStore(ui, (s) => {
@@ -95,7 +97,9 @@ export function Stage() {
         {spectating && (
           <div id="spectatorBar" className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-border bg-surface-3/90 py-1.5 pr-1.5 pl-4 text-sm text-ink-muted backdrop-blur">
             Estás mirando la partida
-            <Button id="spectatorClaim" size="sm" onClick={() => claimSeat()}>Jugar</Button>
+            <Button id="spectatorClaim" size="sm" disabled={seatChanging} onClick={() => claimSeat()}>
+              {seatChanging ? 'Entrando…' : 'Jugar'}
+            </Button>
           </div>
         )}
 
@@ -121,9 +125,9 @@ export function Stage() {
           </ToolButton>
         </div>
 
-        {touchOn && <TouchControls className="max-lg:portrait:hidden" />}
+        {touchOn && <TouchControls key={`overlay-${seat ?? 'spectator'}`} className="max-lg:portrait:hidden" />}
       </div>
-      {touchOn && <TouchControls docked className="hidden max-lg:portrait:block" />}
+      {touchOn && <TouchControls key={`docked-${seat ?? 'spectator'}`} docked className="hidden max-lg:portrait:block" />}
     </section>
   );
 }

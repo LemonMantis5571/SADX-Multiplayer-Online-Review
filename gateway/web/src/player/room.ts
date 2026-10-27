@@ -34,6 +34,7 @@ export const ui = createStore({
   msg: { text: '', tone: '' as Tone },
   connected: false,
   seat: null as number | null,
+  seatChanging: false,
   role: null as 'player' | 'spectator' | null,
   seats: [] as Seat[],
   spectators: 0,
@@ -68,7 +69,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const state = {
   ws: null as WebSocket | null,
   password: session.get(`ulm-pw-${initialCode}`),
-  lastSent: '', lastPadSentAt: 0, pingAt: 0, padSeq: 0, retry: 0,
+  lastSent: '', lastPadSentAt: 0, pingAt: 0, padSeq: 0, retry: 0, seatActionPending: false,
   keys: new Set<string>(), touchAxes: { lx: 0, ly: 0 }, touchButtons: new Set<string>(),
   streamOn: false,
 };
@@ -120,7 +121,8 @@ async function pickCodec() {
 function requestVideo() {
   const s = ui.get();
   if (state.ws && state.ws.readyState === WebSocket.OPEN && video.codec) {
-    state.ws.send(JSON.stringify({ t: 'video', codec: video.codec, quality: s.quality, view: s.view }));
+    const mobile = window.matchMedia?.('(pointer: coarse) and (max-width: 900px)').matches ?? false;
+    state.ws.send(JSON.stringify({ t: 'video', codec: video.codec, quality: s.quality, view: s.view, mobile }));
   }
 }
 
@@ -500,6 +502,7 @@ export function connect() {
     switch (msg.t) {
       case 'welcome':
       case 'assigned': {
+        settleSeatAction();
         setSeat(Number.isInteger(msg.seat) ? msg.seat : null);
         applySeats(msg);
         const seat = ui.get().seat;
@@ -514,6 +517,7 @@ export function connect() {
       }
       case 'seats': applySeats(msg); break;
       case 'released':
+        settleSeatAction();
         setSeat(null);
         applySeats(msg);
         setMsg('Soltaste el puesto: sigues mirando.', 'warn');
@@ -534,6 +538,7 @@ export function connect() {
         break;
       case 'rtc': onRtcMessage(msg); break;
       case 'claim-result':
+        settleSeatAction();
         if (!msg.ok) { setMsg(msg.message || 'No hay un puesto libre.', 'warn'); toast(msg.message || 'No hay un puesto libre'); }
         break;
       case 'notice': toast(msg.message); setMsg(msg.message, 'warn'); break;
@@ -555,6 +560,7 @@ export function connect() {
     if (state.ws !== ws) return; // replaced by a new connection, which owns the state now
     const wasConnected = ui.get().connected;
     ui.set({ connected: false, wsRtt: null });
+    settleSeatAction();
     state.streamOn = false;
     resetDecoder();
     stopRtc(false); // the host dropped its side with the WebSocket
@@ -610,7 +616,15 @@ function setVideoWait(reason: unknown) {
 }
 
 function setSeat(seat: number | null, disconnected = false) {
+  const previous = ui.get().seat;
   ui.set({ seat, role: disconnected ? null : seat ? 'player' : 'spectator' });
+  if (seat === previous && !disconnected) return;
+  state.keys.clear();
+  state.touchAxes.lx = 0;
+  state.touchAxes.ly = 0;
+  state.touchButtons.clear();
+  state.lastSent = '';
+  if (seat !== null && !disconnected) sendIfChanged(emptyPad(), true);
 }
 
 /** A seat past the running match's player count (the mod reports no character for it). */
@@ -657,13 +671,39 @@ export function send(obj: unknown) {
   if (state.ws && state.ws.readyState === WebSocket.OPEN) state.ws.send(JSON.stringify(obj));
 }
 
-export function claimSeat(index?: number) {
-  if (index === undefined) { if (ui.get().role === 'spectator') send({ t: 'claim' }); return; }
-  if (ui.get().seat) send({ t: 'release' }); // switching characters: let go of the current one first
-  send({ t: 'claim', seat: index });
+type SeatAction = { kind: 'claim'; seat: number | null } | { kind: 'switch'; seat: number } | { kind: 'release' };
+
+function settleSeatAction() {
+  state.seatActionPending = false;
+  if (ui.get().seatChanging) ui.set({ seatChanging: false });
 }
 
-export function release() { send({ t: 'release' }); }
+function sendSeatAction(action: SeatAction) {
+  const ws = state.ws;
+  if (state.seatActionPending || !ui.get().connected || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const message = action.kind === 'switch'
+    ? { t: 'switch', seat: action.seat }
+    : action.kind === 'release'
+      ? { t: 'release' }
+      : action.seat === null ? { t: 'claim' } : { t: 'claim', seat: action.seat };
+  state.seatActionPending = true;
+  ui.set({ seatChanging: true });
+  ws.send(JSON.stringify(message));
+}
+
+export function claimSeat(index?: number) {
+  const { role, seat } = ui.get();
+  if (index === undefined) {
+    if (role === 'spectator') sendSeatAction({ kind: 'claim', seat: null });
+    return;
+  }
+  if (seat === index) return;
+  sendSeatAction(seat === null ? { kind: 'claim', seat: index } : { kind: 'switch', seat: index });
+}
+
+export function release() {
+  if (ui.get().seat !== null) sendSeatAction({ kind: 'release' });
+}
 
 export function joinRoom(raw: string) {
   const code = raw.trim().toUpperCase();
@@ -928,7 +968,9 @@ setInterval(tick, 33);
 export function touchStick(lx: number, ly: number) {
   state.touchAxes.lx = lx;
   state.touchAxes.ly = ly;
-  flush();
+  // Sample continuous stick motion on the 30 Hz tick; sending every pointer event can
+  // exceed the room's per-client pad limit on 120 Hz phone touchscreens.
+  if (lx === 0 && ly === 0) flush();
 }
 
 export function touchButton(name: string, down: boolean) {

@@ -39,6 +39,7 @@ export function TopBar() {
     return { text: parts.join(' · ') || '—', rtt: s.video.rtt };
   });
   const seat = useStore(ui, (s) => s.seat);
+  const seatChanging = useStore(ui, (s) => s.seatChanging);
   const role = useStore(ui, (s) => s.role);
   const spectators = useStore(ui, (s) => s.spectators);
   const freeSeats = useStore(ui, (s) => s.seats.filter((x) => !x.occupied).length);
@@ -47,7 +48,7 @@ export function TopBar() {
   const delayTone = videoChip.rtt == null ? '' : videoChip.rtt < 120 ? 'text-success' : videoChip.rtt < 250 ? 'text-warning' : 'text-destructive';
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
+    <header className="relative z-20 border-b border-border bg-background/95 backdrop-blur lg:sticky lg:top-0">
       <div className="mx-auto flex min-h-14 w-full max-w-[1680px] flex-wrap items-center gap-2 px-3 py-2 sm:px-4">
         <div className="mr-2 flex items-center gap-2.5">
           <BrandMark />
@@ -102,11 +103,11 @@ export function TopBar() {
               <SelectItem value="baja">Calidad: baja</SelectItem>
             </SelectContent>
           </Select>
-          <Button id="claimBtn" hidden={role !== 'spectator' || freeSeats === 0} disabled={freeSeats === 0} onClick={() => claimSeat()}>
-            Tomar puesto
+          <Button id="claimBtn" hidden={role !== 'spectator' || freeSeats === 0} disabled={freeSeats === 0 || seatChanging} onClick={() => claimSeat()}>
+            {seatChanging ? 'Entrando…' : 'Tomar puesto'}
           </Button>
-          <Button id="releaseBtn" variant="ghost" disabled={!seat} onClick={release}>
-            Soltar puesto
+          <Button id="releaseBtn" variant="ghost" disabled={!seat || seatChanging} onClick={release}>
+            {seatChanging ? 'Procesando…' : 'Soltar puesto'}
           </Button>
         </div>
       </div>

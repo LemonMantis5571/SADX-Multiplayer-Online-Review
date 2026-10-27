@@ -128,6 +128,25 @@ try {
   await sleep(150);
   check('pong responde al ping', a.messages.some((m) => m.t === 'pong' && m.id === 12345));
 
+  // Cambiar de puesto es atómico: si el destino ya se ocupó, el puesto actual se conserva.
+  a.ws.send(JSON.stringify({ t: 'switch', seat: 4 }));
+  await sleep(180);
+  st = await status();
+  check('cambiar mueve al puesto libre sin soltar el anterior', !st.room.seats[1].occupied && st.room.seats[3].occupied
+    && a.messages.some((m) => m.t === 'assigned' && m.seat === 4)
+    && !a.messages.some((m) => m.t === 'released'), JSON.stringify(st.room.seats.map((s) => s.occupied)));
+  a.ws.send(JSON.stringify({ t: 'switch', seat: 3 }));
+  await sleep(150);
+  st = await status();
+  const failedSwitch = a.messages.filter((m) => m.t === 'claim-result').at(-1);
+  check('destino ocupado no expulsa del puesto actual', failedSwitch?.ok === false
+    && st.room.seats[3].occupied && st.room.seats[2].occupied, JSON.stringify(st.room.seats.map((s) => s.occupied)));
+  a.ws.send(JSON.stringify({ t: 'switch', seat: 2 }));
+  await sleep(150);
+  st = await status();
+  check('se puede cambiar de vuelta al puesto original', st.room.seats[1].occupied && !st.room.seats[3].occupied,
+    JSON.stringify(st.room.seats.map((s) => s.occupied)));
+
   // Liberar puesto: queda como espectador pero el socket sigue vivo.
   a.ws.send(JSON.stringify({ t: 'release' }));
   await sleep(200);

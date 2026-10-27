@@ -1,6 +1,6 @@
 // Touch controls for phones: a stick on the left, ABXY on the right, shoulders on top and START in the
 // middle. Over the picture by default; `docked` puts them in their own strip under it (phone upright).
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { touchButton, touchStick } from './room';
 
@@ -47,6 +47,7 @@ export function TouchControls({ docked = false, className }: { docked?: boolean;
 function Pad({ btn, wide, className, children }: { btn: string; wide?: boolean; className?: string; children: React.ReactNode }) {
   const [held, setHeld] = useState(false);
   const end = () => { setHeld(false); touchButton(btn, false); };
+  useEffect(() => () => touchButton(btn, false), [btn]);
   return (
     <div
       data-btn={btn}
@@ -58,8 +59,9 @@ function Pad({ btn, wide, className, children }: { btn: string; wide?: boolean; 
       }}
       onPointerUp={end}
       onPointerCancel={end}
+      onLostPointerCapture={end}
       className={cn(
-        'pointer-events-auto grid touch-none place-items-center border border-white/15 bg-surface-3/70 font-semibold text-ink backdrop-blur transition-transform',
+        'pointer-events-auto grid touch-none place-items-center border border-white/15 bg-surface-3/70 font-semibold text-ink backdrop-blur max-lg:portrait:backdrop-blur-none transition-transform',
         wide && 'h-9 min-w-14 rounded-lg px-3 text-xs',
         held && 'scale-95 bg-ink/30',
         className,
@@ -73,8 +75,10 @@ function Pad({ btn, wide, className, children }: { btn: string; wide?: boolean; 
 function Stick() {
   const ref = useRef<HTMLDivElement>(null);
   const pointer = useRef<number | null>(null);
+  const frame = useRef<number | null>(null);
+  const pendingOffset = useRef({ x: 0, y: 0 });
   const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const move = (e: React.PointerEvent) => {
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -83,19 +87,38 @@ function Stick() {
     let dy = e.clientY - (rect.top + rect.height / 2);
     const dist = Math.hypot(dx, dy);
     if (dist > max) { dx = (dx / dist) * max; dy = (dy / dist) * max; }
-    setOffset({ x: dx, y: dy });
+    pendingOffset.current = { x: dx, y: dy };
     touchStick(Math.round((dx / max) * 1000) / 1000, Math.round((dy / max) * 1000) / 1000);
+    if (frame.current === null) {
+      frame.current = requestAnimationFrame(() => {
+        frame.current = null;
+        setOffset(pendingOffset.current);
+      });
+    }
   };
-  const end = () => { pointer.current = null; setOffset({ x: 0, y: 0 }); touchStick(0, 0); };
+  const end = () => {
+    if (pointer.current === null) return;
+    pointer.current = null;
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+    pendingOffset.current = { x: 0, y: 0 };
+    setOffset({ x: 0, y: 0 });
+    touchStick(0, 0);
+  };
+  useEffect(() => () => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    touchStick(0, 0);
+  }, []);
   return (
     <div
       ref={ref}
       id="stick"
-      className="pointer-events-auto absolute bottom-5 left-5 size-34 touch-none rounded-full border border-white/15 bg-surface-3/50 backdrop-blur"
+      className="pointer-events-auto absolute bottom-5 left-5 size-34 touch-none rounded-full border border-white/15 bg-surface-3/50 backdrop-blur max-lg:portrait:backdrop-blur-none"
       onPointerDown={(e) => { pointer.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); move(e); }}
       onPointerMove={(e) => { if (pointer.current === e.pointerId) move(e); }}
       onPointerUp={end}
       onPointerCancel={end}
+      onLostPointerCapture={end}
     >
       <div
         id="knob"

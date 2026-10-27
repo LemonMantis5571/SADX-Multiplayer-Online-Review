@@ -164,7 +164,9 @@ confirmar supera el mejor ida y vuelta del espectador más 160 ms, ese espectado
 deja de recibir hasta el siguiente cuadro clave (como mucho 1 s congelado, nunca
 segundos de retraso). En calidad **auto**, quien salta dos veces en 10 s pasa a
 la baja (su pantalla sale recortada de «baja» en la página) y vuelve a probar la
-alta tras 20 s tranquilo (más tiempo si vuelve a fallar).
+alta tras 20 s tranquilo (más tiempo si vuelve a fallar). En teléfonos, **auto**
+empieza y permanece en baja para reducir el trabajo de decodificación; se puede
+elegir alta manualmente.
 
 La ventana del juego tiene que seguir dibujando: `lib/game-window.ps1` la vuelve
 a su tamaño normal sin quitar el foco si se minimiza (no dibuja) o se maximiza

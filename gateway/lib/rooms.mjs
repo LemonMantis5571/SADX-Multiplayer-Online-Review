@@ -55,6 +55,24 @@ export class Room {
     return seat;
   }
 
+  /** Moves a connected player to a free guest seat without briefly leaving the room. */
+  move(clientId, name, wanted) {
+    const current = this.seatOf(clientId);
+    const target = this.seats[wanted - 1];
+    if (!current || !target || target.host || (target.clientId && target.clientId !== clientId)) return null;
+    if (target === current) return { previous: null, seat: current };
+
+    const displayName = name || current.name || `invitado-${target.index}`;
+    this.free(clientId);
+    target.clientId = clientId;
+    target.name = displayName;
+    target.since = Date.now();
+    target.pad = null;
+    target.lastPadAt = 0;
+    target.want = null;
+    return { previous: current, seat: target };
+  }
+
   setWant(clientId, character) {
     const seat = this.seatOf(clientId);
     if (seat) seat.want = character;

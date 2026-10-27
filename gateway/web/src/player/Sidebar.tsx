@@ -41,7 +41,7 @@ function Section({ title, aside, children, className, id }: { title: string; asi
 }
 
 function SeatsCard() {
-  const s = useStore(ui, (x) => ({ seats: x.seats, seat: x.seat, connected: x.connected, game: x.game }));
+  const s = useStore(ui, (x) => ({ seats: x.seats, seat: x.seat, seatChanging: x.seatChanging, connected: x.connected, game: x.game }));
   const taken = s.seats.filter((x) => x.occupied).length;
   return (
     <Section title="Jugadores" aside={s.seats.length ? `${taken}/${s.seats.length}` : ''}>
@@ -76,7 +76,9 @@ function SeatsCard() {
               ) : seat.host ? (
                 <span className="rounded-full border border-hairline px-2 py-0.5 text-[11px] font-medium text-ink-subtle">PC</span>
               ) : !seat.occupied && s.connected ? (
-                <Button size="sm" variant="secondary" onClick={() => claimSeat(seat.index)}>{s.seat ? 'Cambiar' : 'Jugar'}</Button>
+                <Button size="sm" variant="secondary" disabled={s.seatChanging} onClick={() => claimSeat(seat.index)}>
+                  {s.seatChanging ? 'Cambiando…' : s.seat ? 'Cambiar' : 'Jugar'}
+                </Button>
               ) : (
                 <span title={seat.occupied ? 'mando activo' : ''}
                   className={cn('size-2 rounded-full', seat.occupied && seat.padAge != null && seat.padAge < 1500 ? 'bg-success' : 'bg-hairline-tertiary')} />

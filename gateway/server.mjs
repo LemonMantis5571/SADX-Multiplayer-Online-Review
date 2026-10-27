@@ -721,6 +721,7 @@ function main() {
             codec: msg.codec === 'jpeg' ? 'jpeg' : 'h264',
             mode: String(msg.quality || 'auto'),
             view: String(msg.view || 'all'),
+            mobile: msg.mobile === true,
           });
           if (msg.codec === 'jpeg') log(`[vídeo] ${conn.remoteAddress} recibe JPEG (sin WebCodecs)`);
           return;
@@ -783,6 +784,20 @@ function main() {
           }
           conn.send({ t: 'assigned', seat: claimed.index, role: 'player', ...seatsPayload() });
           log(`[sala] ${conn.remoteAddress} toma el puesto ${claimed.index} (${claimed.name})`);
+          hub?.reroute(conn);
+          broadcastSeats();
+          return;
+        }
+        if (msg.t === 'switch') {
+          const wanted = Number.isInteger(msg.seat) ? msg.seat : 0;
+          const moved = room.move(conn.id, conn.displayName, wanted);
+          if (!moved) {
+            conn.send({ t: 'claim-result', ok: false, message: wanted ? seatTakenMessage(wanted) : 'puesto no válido' });
+            return;
+          }
+          if (moved.previous) backend.release(moved.previous.index);
+          conn.send({ t: 'assigned', seat: moved.seat.index, role: 'player', ...seatsPayload() });
+          if (moved.previous) log(`[sala] ${conn.remoteAddress} cambia del puesto ${moved.previous.index} al ${moved.seat.index}`);
           hub?.reroute(conn);
           broadcastSeats();
           return;

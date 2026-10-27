@@ -270,14 +270,15 @@ export class VideoHub {
   }
 
   /** codec: 'h264' | 'jpeg'; mode: 'auto' | 'alta' | 'baja'; view: 'all' | 'mine' | 'p1'..'p4'. */
-  subscribe(conn, { codec = 'h264', mode = 'auto', view = 'all' } = {}) {
+  subscribe(conn, { codec = 'h264', mode = 'auto', view = 'all', mobile = false } = {}) {
     this.unsubscribe(conn);
     const v = {
       conn,
       codec: codec === 'jpeg' && this.jpeg ? 'jpeg' : 'h264',
       mode: LEVELS.includes(mode) ? mode : 'auto',
       view: VIEWS.includes(view) ? view : 'all',
-      level: mode === 'baja' ? 1 : 0,
+      mobile: mobile === true,
+      level: mode === 'baja' || (mode === 'auto' && mobile === true) ? 1 : 0,
       track: null,
       crop: null,
       seq: 0,
@@ -320,12 +321,12 @@ export class VideoHub {
   /**
    * The viewer's direct connection came up or went away: frames switch between RTP and the WebSocket,
    * and either way the page starts over at the next keyframe. On a direct connection the low level isn't
-   * needed for pacing (no acks to fall behind on), so an 'auto' viewer goes back to the high one.
+   * needed for pacing (no acks to fall behind on), so a desktop 'auto' viewer goes back to the high one.
    */
   transportChanged(conn) {
     const v = this.viewers.get(conn);
     if (!v || v.codec !== 'h264') return;
-    if (conn.rtc?.connected && v.mode === 'auto' && v.level !== 0) { v.level = 0; v.levelSince = Date.now(); }
+    if (conn.rtc?.connected && v.mode === 'auto' && !v.mobile && v.level !== 0) { v.level = 0; v.levelSince = Date.now(); }
     this._route(v, true);
   }
 
@@ -438,7 +439,7 @@ export class VideoHub {
       v.drops = v.drops.filter((t) => now - t < DROP_WINDOW_MS);
       if (v.codec === 'h264') {
         if (v.track) this.lastUse.set(v.track, now);
-        if (v.mode === 'auto' && !v.conn.rtc?.connected) {
+        if (v.mode === 'auto' && !v.mobile && !v.conn.rtc?.connected) {
           if (v.level === 0 && v.drops.length >= DOWNGRADE_DROPS) {
             // Failing again soon after an upgrade: wait longer before the next try.
             if (now - v.lastUpgradeAt < 30000) v.upgradeWait = Math.min(v.upgradeWait * 2, UPGRADE_MAX_MS);
@@ -459,6 +460,7 @@ export class VideoHub {
         codec: v.codec,
         tier: LEVELS[v.level],
         mode: v.mode,
+        mobile: v.mobile,
         view: v.view,
         track: v.track,
         transport: v.conn.rtc?.connected ? 'rtc' : 'ws',
@@ -506,6 +508,7 @@ export class VideoHub {
         address: v.conn.remoteAddress,
         codec: v.codec,
         mode: v.mode,
+        mobile: v.mobile,
         view: v.view,
         track: v.track,
         level: LEVELS[v.level],
