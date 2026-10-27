@@ -86,10 +86,13 @@ namespace cs
 		{
 			NJS_POINT3 center;
 			float radius;
-			int until;               // GameTimer
+			int until;               // effectFrame
 			int owner;
 		};
 		std::vector<Sphere> spheres;
+		// Frames the effects task has run: the clock for shots, spheres and blasts. GameTimer stands still in
+		// the adventure fields and Chao areas, where they would never expire.
+		int effectFrame = 0;
 
 		struct Grenade
 		{
@@ -149,9 +152,9 @@ namespace cs
 			return GetModel(std::string("models\\player\\") + name + "\\" + name + ".mdl");
 		}
 
-		void PlaySfx(const char* relative, float volume = 1.0f)
+		int SoundId(const char* relative)
 		{
-			if (!relative || csDir.empty()) return;
+			if (!relative || csDir.empty()) return -1;
 			auto it = soundIds.find(relative);
 			if (it == soundIds.end())
 			{
@@ -161,7 +164,12 @@ namespace cs
 				if (id < 0) id = sound::Load(csDir + L"\\valve\\sound\\" + Widen(path));
 				it = soundIds.emplace(relative, id).first;
 			}
-			sound::Play(it->second, volume);
+			return it->second;
+		}
+
+		void PlaySfx(const char* relative, float volume = 1.0f)
+		{
+			sound::Play(SoundId(relative), volume);
 		}
 
 		// ---- geometry ----
@@ -251,7 +259,7 @@ namespace cs
 
 		void AddSphere(const NJS_POINT3& center, float radius, int frames, int owner)
 		{
-			spheres.push_back({ center, radius, GameTimer + frames, owner });
+			spheres.push_back({ center, radius, effectFrame + frames, owner });
 		}
 
 		// Enemies near the shooter come from the list the mod keeps for the homing attack (about 100 units).
@@ -281,6 +289,20 @@ namespace cs
 			return out;
 		}
 
+		// Battle mode: a hit scatters the rings like any other, then the victim has a second and a half before
+		// the next one counts (the game's own hits come with that window; HurtCharacter alone has none, so a rifle
+		// would kill at once). Invincible or dead players aren't hit.
+		constexpr int HurtCooldownFrames = 90;
+		int hurtUntil[PLAYER_MAX] = {};
+
+		void Hurt(int victim)
+		{
+			playerwk* pwp = playerpwp[victim];
+			if (!pwp || (pwp->item & (Powerups_Invincibility | Powerups_Dead)) || effectFrame < hurtUntil[victim]) return;
+			hurtUntil[victim] = effectFrame + HurtCooldownFrames;
+			HurtCharacter(static_cast<char>(victim));
+		}
+
 		void HitPlayers(int shooter, const NJS_POINT3& center, float radius, bool launch)
 		{
 			for (int i = 0; i < PLAYER_MAX; ++i)
@@ -288,7 +310,7 @@ namespace cs
 				taskwk* ptwp = playertwp[i];
 				if (!ptwp || Dist2(ptwp->pos, center) > radius * radius) continue;
 				if (launch) EnemyBounceThing(static_cast<Uint8>(i), 0.0f, 4.0f, 0.0f); // grenade jump, teammates too
-				if (i != shooter && multiplayer::IsBattleMode()) HurtCharacter(static_cast<char>(i));
+				if (i != shooter && multiplayer::IsBattleMode()) Hurt(i);
 			}
 		}
 
@@ -313,12 +335,12 @@ namespace cs
 			for (taskwk* e : hits)
 			{
 				AddSphere(e->pos, 4.0f, 3, pnum);
-				tracers.push_back({ muzzle, { e->pos.x, e->pos.y + 3.0f, e->pos.z }, GameTimer + 4, 0xFFFFE08A });
+				tracers.push_back({ muzzle, { e->pos.x, e->pos.y + 3.0f, e->pos.z }, effectFrame + 4, 0xFFFFE08A });
 			}
 			if (hits.empty())
 			{
 				tracers.push_back({ muzzle, { muzzle.x + forward.x * w.range, muzzle.y + forward.y * w.range,
-					muzzle.z + forward.z * w.range }, GameTimer + 3, 0xFFFFE08A });
+					muzzle.z + forward.z * w.range }, effectFrame + 3, 0xFFFFE08A });
 			}
 			// In battle mode, other players in the line of fire take the hit.
 			if (multiplayer::IsBattleMode())
@@ -331,7 +353,7 @@ namespace cs
 					const float flat = std::sqrt(dx * dx + dz * dz);
 					if (flat > w.range || flat < 0.001f || std::fabs(other->pos.y - twp->pos.y) > 20.0f) continue;
 					if ((dx * forward.x + dz * forward.z) / flat >= std::cos(w.cone * 3.14159265f / 180.0f))
-						HurtCharacter(static_cast<char>(i));
+						Hurt(i);
 				}
 			}
 		}
@@ -350,7 +372,7 @@ namespace cs
 		{
 			AddSphere(g.pos, ExplosionRadius, 6, g.owner);
 			HitPlayers(g.owner, g.pos, ExplosionRadius, true);
-			blasts.push_back({ { g.pos.x, g.pos.y, g.pos.z }, GameTimer });
+			blasts.push_back({ { g.pos.x, g.pos.y, g.pos.z }, effectFrame });
 			PlaySfx("weapons/explode3.wav");
 		}
 
@@ -363,6 +385,7 @@ namespace cs
 
 		void __cdecl EffectsExec(task* tp)
 		{
+			++effectFrame;
 			for (size_t i = 0; i < grenades.size();)
 			{
 				Grenade& g = grenades[i];
@@ -387,7 +410,7 @@ namespace cs
 				}
 				else ++i;
 			}
-			const int now = GameTimer;
+			const int now = effectFrame;
 			RemoveIf(spheres, [now](const Sphere& s) { return now >= s.until; });
 			RemoveIf(tracers, [now](const Tracer& t) { return now >= t.until; });
 			RemoveIf(blasts, [now](const Blast& b) { return now - b.start > 24; });
@@ -415,7 +438,7 @@ namespace cs
 					tris.push_back({ a, tr.color }); tris.push_back({ b, tr.color }); tris.push_back({ c, tr.color });
 					tris.push_back({ a, tr.color }); tris.push_back({ c, tr.color }); tris.push_back({ e, tr.color });
 				}
-				if (tr.until - GameTimer >= 3)
+				if (tr.until - effectFrame >= 3)
 				{
 					Placement flash = { tr.from, { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, 1.0f };
 					Box(tris, flash, -1.2f, 1.2f, -0.4f, 0.4f, -0.4f, 0.4f, 0xFFFFF6C8);
@@ -445,7 +468,7 @@ namespace cs
 			}
 			for (const auto& b : blasts)
 			{
-				const float age = static_cast<float>(GameTimer - b.start);
+				const float age = static_cast<float>(effectFrame - b.start);
 				const float r = 6.0f + age * 2.2f;
 				Placement p = identity;
 				p.origin = b.center;
@@ -480,7 +503,7 @@ namespace cs
 		BOOL __cdecl CheckItemExplosion_r(NJS_POINT3* pos)
 		{
 			if (CheckItemExplosion_h.Original(pos)) return TRUE;
-			const int now = GameTimer;
+			const int now = effectFrame;
 			for (const auto& s : spheres)
 			{
 				if (now < s.until && Dist2(*pos, s.center) <= s.radius * s.radius)
@@ -559,6 +582,20 @@ namespace cs
 		if (!pl.greeted)
 		{
 			pl.greeted = true;
+			// Everything this soldier can show or play, read now while the level starts instead of on the first shot.
+			const int team = terrorist ? 0 : 1;
+			PlayerModel(pl.character);
+			GetModel("models\\w_hegrenade.mdl");
+			for (const WeaponDef& w : Weapons)
+			{
+				GetModel(std::string("models\\") + w.model[team]);
+				SoundId(w.fire[team]);
+				SoundId(w.clipout);
+				SoundId(w.clipin);
+			}
+			for (const char* sfx : { "weapons/knife_hit1.wav", "weapons/pinpull.wav", "radio/ct_fireinhole.wav", "weapons/explode3.wav",
+				"weapons/he_bounce-1.wav", "items/gunpickup2.wav", "weapons/dryfire_rifle.wav" })
+				SoundId(sfx);
 			PlaySfx(terrorist ? "radio/letsgo.wav" : "radio/locknload.wav");
 		}
 

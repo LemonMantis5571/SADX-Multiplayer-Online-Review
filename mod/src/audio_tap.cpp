@@ -57,6 +57,13 @@ namespace audio_tap
 		std::atomic<ULONGLONG> sendUntil{ 0 };
 		uint32_t sequence = 0;
 
+		// The one stream sent to the gateway: the first to hand Windows a buffer, the game's own, open from boot.
+		// A second stream in the process (another audio library) would interleave with it into noise; if this
+		// one stops releasing buffers for a while, the next stream that does takes over.
+		IAudioRenderClient* chosen = nullptr;
+		ULONGLONG chosenLast = 0;
+		constexpr ULONGLONG SwitchAfterMs = 500;
+
 		constexpr ULONGLONG RequestLifetimeMs = 5000;
 		constexpr int MaxPayload = 32 * 1024;
 		const GUID SubtypeFloat = { 0x00000003, 0x0000, 0x0010, { 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 } };
@@ -145,16 +152,21 @@ namespace audio_tap
 		HRESULT STDMETHODCALLTYPE ReleaseBuffer_r(IAudioRenderClient* self, UINT32 frames, DWORD flags)
 		{
 			// The buffer is only ours until it's released: copy it out first.
-			if (frames && GetTickCount64() < sendUntil.load())
+			const ULONGLONG now = GetTickCount64();
+			bool send = false;
+			Stream stream;
 			{
-				Stream stream;
+				std::lock_guard<std::mutex> guard(lock);
+				if (!chosen || chosen == self || now - chosenLast > SwitchAfterMs) chosen = self;
+				if (chosen == self)
 				{
-					std::lock_guard<std::mutex> guard(lock);
+					chosenLast = now;
+					send = frames && now < sendUntil.load();
 					const auto found = streams.find(self);
-					if (found != streams.end()) stream = found->second;
+					if (send && found != streams.end()) stream = found->second;
 				}
-				Send(stream.format, stream.data, frames, (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0);
 			}
+			if (send) Send(stream.format, stream.data, frames, (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0);
 			return originalReleaseBuffer(self, frames, flags);
 		}
 

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
 import { CHARACTER_IDS, EMOTES, characterName, isSoldier } from '@/lib/game';
 import {
-  benched, characterOf, claimSeat, hooks, joinRoom, measureLatency, saveName, sendChat, sendEmote, setDirect, setWant, ui,
+  benched, characterOf, claimSeat, hooks, joinRoom, keepGameKeys, measureLatency, saveName, sendChat, sendEmote, setDirect, setWant, ui,
 } from './room';
 
 export function Sidebar() {
@@ -113,7 +113,7 @@ function NextMatchCard() {
         <SelectTrigger id="wantSelect" className="w-full" aria-label="Personaje que quieres en la próxima partida">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent onCloseAutoFocus={keepGameKeys}>
           <SelectItem value="none">Me da igual</SelectItem>
           {options.map((k) => <SelectItem key={k} value={k}>Quiero ser {characterName(k)}</SelectItem>)}
         </SelectContent>
@@ -151,7 +151,7 @@ function ChatCard() {
             className="min-w-9 px-2 text-[15px] font-bold">{e}</Button>
         ))}
       </div>
-      <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); sendChat(text); setText(''); }}>
+      <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); sendChat(text); setText(''); inputRef.current?.blur(); }}>
         <Input ref={inputRef} id="chatInput" maxLength={160} placeholder="Escribe algo…" autoComplete="off" aria-label="Mensaje"
           value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') inputRef.current?.blur(); }} />
         <Button type="submit" variant="secondary">Enviar</Button>

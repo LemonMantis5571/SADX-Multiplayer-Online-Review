@@ -942,6 +942,10 @@ export function toggleFullscreen() {
   else els.stage?.requestFullscreen?.().catch(() => {});
 }
 
+/** For the page's dropdowns: closing one doesn't put the focus back on its button, where Space and the arrows
+ * would open it again instead of reaching the game. */
+export const keepGameKeys = (e: Event) => e.preventDefault();
+
 const typing = (e: KeyboardEvent) => {
   const t = e.target;
   if (!(t instanceof Element)) return false;

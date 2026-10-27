@@ -857,6 +857,10 @@ function main() {
     if (room.prunePresent(connectedIds())) broadcastSeats();
   }, 2000);
 
+  server.on('error', (error) => {
+    log(`[gateway] ${error.code === 'EADDRINUSE' ? `el puerto ${cfg.port} ya está en uso` : error.message}`);
+    if (!server.listening) process.exit(1); // nothing to serve: whoever started the room sees it fail
+  });
   server.listen(cfg.port, cfg.host, () => {
     const base = `http://${cfg.host === '0.0.0.0' ? '127.0.0.1' : cfg.host}:${cfg.port}`;
     log('');
@@ -892,6 +896,10 @@ function main() {
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+  // A stray error in a library (werift's mDNS lookup emits 'error' with no listener when UDP 5353 is taken) must
+  // not take the whole room down in the middle of a match: log it and keep serving.
+  process.on('uncaughtException', (error) => log(`[gateway] error inesperado: ${error?.stack || error}`));
+  process.on('unhandledRejection', (error) => log(`[gateway] promesa rechazada: ${error?.stack || error}`));
 }
 
 main();

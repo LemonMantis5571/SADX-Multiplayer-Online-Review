@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
-import { VIEWS, claimSeat, copyLink, release, setQuality, setView, ui } from './room';
+import { VIEWS, claimSeat, copyLink, keepGameKeys, release, setQuality, setView, ui } from './room';
 
 export function BrandMark({ className }: { className?: string }) {
   return <span aria-hidden className={cn('inline-block size-5 rounded-full border-[3.5px] border-primary', className)} />;
@@ -88,7 +88,7 @@ export function TopBar() {
             <SelectTrigger id="view" size="sm" className="min-w-40" aria-label="Qué ves (V)">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent onCloseAutoFocus={keepGameKeys}>
               {VIEWS.map(([value, label]) => <SelectItem key={value} value={value}>Ver: {label.toLowerCase()}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -96,7 +96,7 @@ export function TopBar() {
             <SelectTrigger id="quality" size="sm" aria-label="Calidad del vídeo">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent onCloseAutoFocus={keepGameKeys}>
               <SelectItem value="auto">Calidad: auto</SelectItem>
               <SelectItem value="alta">Calidad: alta</SelectItem>
               <SelectItem value="baja">Calidad: baja</SelectItem>

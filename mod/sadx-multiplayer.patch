@@ -348,7 +348,7 @@ index c34b222..df21937 100644
  FunctionPointer(Bool, ALW_CommunicationOff, (task* tp), 0x71A520);
  FunctionPointer(Bool, ALW_IsHeld, (task* tp), 0x71A320);
 diff --git a/source/testspawn.cpp b/source/testspawn.cpp
-index 6879804..add0a07 100644
+index 6879804..99467fa 100644
 --- a/source/testspawn.cpp
 +++ b/source/testspawn.cpp
 @@ -34,7 +34,16 @@ static const std::unordered_map<std::wstring, Characters> character_name_ids_map
@@ -369,3 +369,15 @@ index 6879804..add0a07 100644
  };
  
  Characters parse_character_id(const std::wstring& str)
+@@ -47,7 +56,10 @@ Characters parse_character_id(const std::wstring& str)
+ 	if (it != character_name_ids_map.end())
+ 		return it->second;
+ 
+-	return static_cast<Characters>(std::stol(lowercase));
++	// A number, or Sonic for a name this build doesn't know (std::stol would throw and close the game at boot).
++	wchar_t* end = nullptr;
++	const long id = wcstol(lowercase.c_str(), &end, 10);
++	return end != lowercase.c_str() && *end == 0 ? static_cast<Characters>(id) : Characters_Sonic;
+ }
+ 
+ void TestSpawn()

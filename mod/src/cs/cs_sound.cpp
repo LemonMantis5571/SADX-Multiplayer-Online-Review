@@ -1,5 +1,6 @@
 #include "pch.h"
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <vector>
@@ -19,7 +20,43 @@ namespace cs { namespace sound
 		{
 			std::vector<IDirectSoundBuffer*> voices;
 			size_t next = 0;
+			DWORD sample = 0; // BASS's, when it plays the sound
 		};
+
+		// The Mod Loader's BASS, which already plays the game's music and sounds: through it the soldiers' sounds
+		// land in the game's own WASAPI stream. A DirectSound device of ours opens a second stream in the process,
+		// which the speakers mix fine but audio_tap can send only one of, so it's the fallback without BASS.
+		struct Bass
+		{
+			DWORD(WINAPI* SampleLoad)(BOOL mem, const void* file, uint64_t offset, DWORD length, DWORD max, DWORD flags) = nullptr;
+			DWORD(WINAPI* SampleGetChannel)(DWORD sample, DWORD flags) = nullptr;
+			BOOL(WINAPI* ChannelSetAttribute)(DWORD channel, DWORD attrib, float value) = nullptr;
+			BOOL(WINAPI* ChannelPlay)(DWORD channel, BOOL restart) = nullptr;
+		};
+		constexpr DWORD BassUnicode = 0x80000000;
+		constexpr DWORD BassSampleOverPos = 0x20000; // all voices busy: take over the one that played longest
+		constexpr DWORD BassAttribVolume = 2;
+
+		Bass bass;
+		bool bassTried = false;
+
+		bool OpenBass()
+		{
+			if (!bassTried)
+			{
+				bassTried = true;
+				if (HMODULE module = GetModuleHandleW(L"bass.dll"))
+				{
+					bass.SampleLoad = reinterpret_cast<decltype(bass.SampleLoad)>(GetProcAddress(module, "BASS_SampleLoad"));
+					bass.SampleGetChannel = reinterpret_cast<decltype(bass.SampleGetChannel)>(GetProcAddress(module, "BASS_SampleGetChannel"));
+					bass.ChannelSetAttribute = reinterpret_cast<decltype(bass.ChannelSetAttribute)>(GetProcAddress(module, "BASS_ChannelSetAttribute"));
+					bass.ChannelPlay = reinterpret_cast<decltype(bass.ChannelPlay)>(GetProcAddress(module, "BASS_ChannelPlay"));
+				}
+				if (!bass.SampleLoad || !bass.SampleGetChannel || !bass.ChannelSetAttribute || !bass.ChannelPlay) bass = Bass();
+				PrintDebug("[CS] sounds through %s\n", bass.SampleLoad ? "the Mod Loader's BASS" : "DirectSound");
+			}
+			return bass.SampleLoad != nullptr;
+		}
 
 		IDirectSound8* device = nullptr;
 		bool tried = false;
@@ -70,6 +107,15 @@ namespace cs { namespace sound
 
 	int Load(const std::wstring& path)
 	{
+		if (OpenBass())
+		{
+			const DWORD sample = bass.SampleLoad(FALSE, path.c_str(), 0, 0, Voices, BassUnicode | BassSampleOverPos);
+			if (!sample) return -1;
+			Sound sound;
+			sound.sample = sample;
+			sounds.push_back(std::move(sound));
+			return static_cast<int>(sounds.size() - 1);
+		}
 		if (!Open()) return -1;
 		std::ifstream in(path, std::ios::binary);
 		if (!in) return -1;
@@ -108,6 +154,15 @@ namespace cs { namespace sound
 	{
 		if (id < 0 || id >= static_cast<int>(sounds.size())) return;
 		Sound& sound = sounds[id];
+		const float v = volume < 0.01f ? 0.01f : (volume > 1.0f ? 1.0f : volume);
+		if (sound.sample)
+		{
+			const DWORD channel = bass.SampleGetChannel(sound.sample, 0);
+			if (!channel) return;
+			bass.ChannelSetAttribute(channel, BassAttribVolume, v * 0.5f); // a bit under the game's own sounds
+			bass.ChannelPlay(channel, FALSE);
+			return;
+		}
 		IDirectSoundBuffer* voice = nullptr;
 		for (size_t i = 0; i < sound.voices.size() && !voice; ++i)
 		{
@@ -121,7 +176,6 @@ namespace cs { namespace sound
 			sound.next = (sound.next + 1) % sound.voices.size();
 			voice->Stop();
 		}
-		const float v = volume < 0.01f ? 0.01f : (volume > 1.0f ? 1.0f : volume);
 		voice->SetVolume(static_cast<LONG>(2000.0f * std::log10(v)) - 600); // a bit under the game's own sounds
 		voice->SetCurrentPosition(0);
 		voice->Play(0, 0, 0);

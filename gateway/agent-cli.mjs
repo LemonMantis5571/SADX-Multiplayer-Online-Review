@@ -118,8 +118,13 @@ function parseArgs(argv) {
   return result;
 }
 
+/** The room to talk to: --url, else the one `room start` or `up` left running (8123 for `up`), else port 8080. */
 function baseUrl(value) {
-  return String(value || 'http://127.0.0.1:8080').replace(/\/$/, '');
+  let running = null;
+  if (!value) {
+    try { running = readState(ROOM_STATE)?.url; } catch { /* unreadable: the default */ }
+  }
+  return String(value || running || 'http://127.0.0.1:8080').replace(/\/$/, '');
 }
 
 function firstLanAddress() {
@@ -825,14 +830,17 @@ async function gameStop() {
     return { ok: true, stopped: false, alreadyExited: true, pid: processInfo.pid };
   }
   const pid = processInfo.pid;
+  // game.json goes first: a room still running takes a game that exits while it's there for a crash, and reopens it.
+  rmSync(GAME_STATE, { force: true });
   const killed = spawnSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { encoding: 'utf8', windowsHide: true });
   if (killed.status !== 0) {
     const afterKill = inspectGameProcess(state);
-    if (afterKill.processFound) throw new Error(killed.stderr.trim() || killed.stdout.trim() || 'taskkill no pudo cerrar el juego');
-    rmSync(GAME_STATE, { force: true });
+    if (afterKill.processFound) {
+      writeFileSync(GAME_STATE, JSON.stringify(state, null, 2), 'utf8');
+      throw new Error(killed.stderr.trim() || killed.stdout.trim() || 'taskkill no pudo cerrar el juego');
+    }
     return { ok: true, stopped: false, alreadyExited: true, pid };
   }
-  rmSync(GAME_STATE, { force: true });
   return { ok: true, stopped: true, pid };
 }
 
@@ -1036,6 +1044,14 @@ async function setup(opts = {}) {
   if (!existsSync(exe)) throw new Error(`no encuentro sonic.exe en ${dir}`);
   if (!existsSync(path.join(dir, 'mods', '.modloader', 'SADXModLoader.dll'))) {
     throw new Error(`${dir} no tiene SADX Mod Loader: instala el SADX Mod Installer (convierte el juego e instala SA Mod Manager) y abre SA Mod Manager una vez`);
+  }
+  // A running SADX keeps the mod's DLL open (copying over it fails with EBUSY): nothing changes until it's closed.
+  const loadedDll = path.join(dir, 'mods', 'sadx-multiplayer', 'sadx-multiplayer.dll');
+  if (existsSync(loadedDll)) {
+    try { closeSync(openSync(loadedDll, 'r+')); }
+    catch (error) {
+      if (error.code === 'EBUSY' || error.code === 'EPERM') throw new Error('SADX está abierto: ciérralo (o SADX-Online-cerrar.cmd) y repite setup');
+    }
   }
   const done = [];
   const todo = [];

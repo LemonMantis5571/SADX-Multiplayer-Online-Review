@@ -65,6 +65,13 @@ function alive(pid) {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
 
+/** The program Windows runs under a PID ('' if none): game.json can outlive the game, and PIDs get reused. */
+function imageName(pid) {
+  const list = spawnSync('tasklist.exe', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], { encoding: 'utf8', windowsHide: true });
+  const match = /^"([^"]+)","(\d+)"/m.exec(list.stdout || '');
+  return match && Number(match[2]) === pid ? match[1] : '';
+}
+
 export class GameManager {
   constructor({ exe, stateFile, configFile, log = console.log }) {
     this.exe = exe;
@@ -93,6 +100,11 @@ export class GameManager {
   adopt() {
     const state = this._readState();
     if (!state || !alive(state.pid) || state.pid === this.pid) return false;
+    const expected = path.basename(state.exe || this.exe).toLowerCase();
+    if (process.platform === 'win32' && imageName(state.pid).toLowerCase() !== expected) {
+      rmSync(this.stateFile, { force: true }); // that PID is another program now: never adopt (or kill) it
+      return false;
+    }
     this.pid = state.pid;
     if (Array.isArray(state.args) && state.args.includes('--multi')) this.config = configFromArgs(state.args);
     this.log(`[juego] SADX en marcha (pid ${state.pid}): ${this.describe()}`);

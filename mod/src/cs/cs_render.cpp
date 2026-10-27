@@ -53,6 +53,9 @@ namespace cs { namespace render
 				d->SetTextureStageState(0, D3DTSS_MINFILTER, D3DTEXF_LINEAR);
 				d->SetTextureStageState(0, D3DTSS_ADDRESSU, D3DTADDRESS_WRAP);
 				d->SetTextureStageState(0, D3DTSS_ADDRESSV, D3DTADDRESS_WRAP);
+				// The game's environment-mapped (shiny) models leave texture coordinates generated from the normals.
+				d->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
+				d->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
 				d->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
 			}
 
@@ -87,10 +90,11 @@ namespace cs { namespace render
 				{ D3DRS_ALPHABLENDENABLE, 0 }, { D3DRS_ALPHATESTENABLE, 0 }, { D3DRS_ALPHAREF, 0 },
 				{ D3DRS_ALPHAFUNC, 0 }, { D3DRS_SRCBLEND, 0 },
 			};
-			std::pair<D3DTEXTURESTAGESTATETYPE, DWORD> stage[9] = {
+			std::pair<D3DTEXTURESTAGESTATETYPE, DWORD> stage[11] = {
 				{ D3DTSS_COLOROP, 0 }, { D3DTSS_COLORARG1, 0 }, { D3DTSS_COLORARG2, 0 }, { D3DTSS_ALPHAOP, 0 },
 				{ D3DTSS_ALPHAARG1, 0 }, { D3DTSS_MAGFILTER, 0 }, { D3DTSS_MINFILTER, 0 },
-				{ D3DTSS_ADDRESSU, 0 }, { D3DTSS_ADDRESSV, 0 },
+				{ D3DTSS_ADDRESSU, 0 }, { D3DTSS_ADDRESSV, 0 }, { D3DTSS_TEXCOORDINDEX, 0 },
+				{ D3DTSS_TEXTURETRANSFORMFLAGS, 0 },
 			};
 		};
 
