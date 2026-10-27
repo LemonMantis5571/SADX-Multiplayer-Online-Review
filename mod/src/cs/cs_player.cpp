@@ -303,6 +303,45 @@ namespace cs
 			HurtCharacter(static_cast<char>(victim));
 		}
 
+		// ---- hits through the game's collisions (bosses) ----
+
+		// Bosses use the game's collision lists instead of the bomb-item check. Damage 0x43 targets the enemy
+		// lists at power 3; btimer gives EnemyCheckDamage_r the shooter's player number for scoring.
+		constexpr int ShotSpheres = 8;
+		constexpr unsigned ShotIgnoreOtherLists = 0x740000; // players, objects, items, and Chao
+
+		void __cdecl ShotExec(task* tp)
+		{
+			taskwk* twp = tp->twp;
+			if (twp->mode == 0) EntryColliList(twp);
+			// Keep the owner available while the hit target processes the previous frame's collision.
+			if (++twp->mode == 3) FreeTask(tp);
+		}
+
+		void ShotAt(int pnum, const NJS_POINT3& from, const std::vector<NJS_POINT3>& points, float radius)
+		{
+			for (size_t start = 0; start < points.size(); start += ShotSpheres)
+			{
+				task* tp = CreateElementalTask(LoadObj_Data1, LEV_3, ShotExec);
+				if (!tp) return;
+				CCL_INFO info[ShotSpheres] = {};
+				const int count = static_cast<int>((std::min)(points.size() - start, static_cast<size_t>(ShotSpheres)));
+				for (int i = 0; i < count; ++i)
+				{
+					const NJS_POINT3& point = points[start + i];
+					info[i].form = CI_FORM_SPHERE;
+					info[i].damage = 0x43;
+					info[i].attr = ShotIgnoreOtherLists;
+					info[i].center = { point.x - from.x, point.y - from.y, point.z - from.z };
+					info[i].a = radius;
+				}
+				taskwk* twp = tp->twp;
+				twp->pos = from;
+				twp->btimer = static_cast<char>(pnum);
+				CCL_Init(tp, info, count, CID_BULLET); // CCL_Init copies the collision definitions
+			}
+		}
+
 		void HitPlayers(int shooter, const NJS_POINT3& center, float radius, bool launch)
 		{
 			for (int i = 0; i < PLAYER_MAX; ++i)
@@ -327,21 +366,31 @@ namespace cs
 			{
 				NJS_POINT3 at = { twp->pos.x + forward.x * 10.0f, twp->pos.y + up.y * 5.0f, twp->pos.z + forward.z * 10.0f };
 				AddSphere(at, 12.0f, 3, pnum);
+				ShotAt(pnum, at, { at }, 10.0f);
 				if (!Targets(pnum, twp->pos, forward, w.range, w.cone, false).empty()) PlaySfx("weapons/knife_hit1.wav");
 				return;
 			}
 
 			const auto hits = Targets(pnum, twp->pos, forward, w.range, w.cone, w.pierce);
+			std::vector<NJS_POINT3> struck;
 			for (taskwk* e : hits)
 			{
 				AddSphere(e->pos, 4.0f, 3, pnum);
+				struck.push_back(e->pos);
 				tracers.push_back({ muzzle, { e->pos.x, e->pos.y + 3.0f, e->pos.z }, effectFrame + 4, 0xFFFFE08A });
 			}
 			if (hits.empty())
 			{
 				tracers.push_back({ muzzle, { muzzle.x + forward.x * w.range, muzzle.y + forward.y * w.range,
 					muzzle.z + forward.z * w.range }, effectFrame + 3, 0xFFFFE08A });
+				// Nothing homing-targetable ahead: the shot's line, for whatever only collides (a boss's body).
+				for (int i = 0; i < ShotSpheres; ++i)
+				{
+					const float d = w.range * (i + 0.5f) / ShotSpheres;
+					struck.push_back({ muzzle.x + forward.x * d, muzzle.y + forward.y * d, muzzle.z + forward.z * d });
+				}
 			}
+			ShotAt(pnum, { muzzle.x, muzzle.y, muzzle.z }, struck, hits.empty() ? w.range / ShotSpheres * 0.6f : 6.0f);
 			// In battle mode, other players in the line of fire take the hit.
 			if (multiplayer::IsBattleMode())
 			{
@@ -371,6 +420,7 @@ namespace cs
 		void Explode(const Grenade& g)
 		{
 			AddSphere(g.pos, ExplosionRadius, 6, g.owner);
+			ShotAt(g.owner, g.pos, { g.pos }, ExplosionRadius);
 			HitPlayers(g.owner, g.pos, ExplosionRadius, true);
 			blasts.push_back({ { g.pos.x, g.pos.y, g.pos.z }, effectFrame });
 			PlaySfx("weapons/explode3.wav");
