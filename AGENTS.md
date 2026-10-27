@@ -1,14 +1,103 @@
-# AGENTS.md — SADX Online
+# AGENTS.md for SADX Online
 
-SADX Online deja jugar Sonic Adventure DX a cuatro desde el navegador: la PC del usuario (el **anfitrión**)
-corre el juego con el mod multijugador y una **sala** (servidor Node en `gateway/`) que reparte vídeo, sonido y
-mandos por un enlace público. Lo habitual que te pidan: instalar todo en la PC del usuario y dejarlo jugando.
-Para eso sigue los **Pasos** en orden; cada uno termina en una condición comprobable (**Hecho cuando**) y no
-se pasa al siguiente sin cumplirla. Qué es cada carpeta: [`README.md`](README.md#repository-layout). Detalles de la
-sala, el vídeo y el CLI: [`gateway/README.md`](gateway/README.md).
+SADX Online deja jugar Sonic Adventure DX a cuatro desde el navegador. La PC del anfitrión corre el juego con
+el mod multijugador y una sala Node en `gateway/` que reparte vídeo, sonido y mandos por un enlace público.
+
+Para compilar el código, sigue primero [Construir desde el checkout](#construir-desde-el-checkout). Los pasos
+numerados de abajo instalan y ejecutan el juego en la PC del usuario. Cada paso termina con una comprobación.
+Qué contiene cada carpeta: [`README.md`](README.md#repository-layout). Detalles de la sala y del CLI:
+[`gateway/README.md`](gateway/README.md).
 
 Todo es Windows. Los comandos son de PowerShell y, salvo que se diga otra cosa, se ejecutan desde la raíz del
 repo. El CLI responde en JSON (con `--human`, en texto para personas).
+
+## Construir desde el checkout
+
+Ejecuta los comandos desde la raíz del repo. Compilar no requiere una copia de SADX ni abrir el juego. La ruta
+del repo debe tener menos de 260 caracteres. Usa una carpeta corta fuera de OneDrive y de `%TEMP%`.
+
+### Compilar el mod
+
+Se necesita Windows, Git, acceso a Internet y Visual Studio 2022 Build Tools con MSVC v143 y Windows 10 SDK.
+`mod/build.ps1` inicializa los submódulos, aplica el patch y descarga tres headers de DirectX 8. Comprueba los
+hashes de esos headers antes de usarlos. El script encuentra MSBuild con `vswhere.exe`; no hace falta añadir
+MSBuild al `PATH`.
+
+Comprueba Visual Studio:
+
+```powershell
+$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+Test-Path $vswhere
+if (Test-Path $vswhere) {
+    & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'MSBuild\**\Bin\MSBuild.exe'
+}
+```
+
+Si no aparece una ruta de `MSBuild.exe`, pide permiso antes de instalar Build Tools. La instalación ocupa varios
+gigabytes:
+
+```powershell
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
+Compila y empaqueta el mod:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\mod\build.ps1
+if ($LASTEXITCODE -ne 0) { throw "Mod build failed: $LASTEXITCODE" }
+if (-not (Test-Path .\dist\mods\sadx-multiplayer\sadx-multiplayer.dll)) { throw 'Mod DLL is missing.' }
+if (-not (Test-Path .\dist\sadx-online-mod.zip)) { throw 'Mod ZIP is missing.' }
+```
+
+**Hecho cuando:** el script termina con código 0 y ambas rutas existen. El script deja aplicado el patch dentro
+del submódulo. No hagas commit de esos cambios. Si el script dice que el patch no aplica, inspecciona
+`git -C mod/sadx-multiplayer status --short` y conserva los cambios locales. Para compilar sin tocarlos, clona
+el repo en una carpeta corta fuera de OneDrive y de `%TEMP%`. La carpeta `SADX-Online-build` dentro del perfil
+del usuario sirve si no existe y no está sincronizada con OneDrive:
+
+```powershell
+$buildRepo = Join-Path $env:USERPROFILE 'SADX-Online-build'
+if (Test-Path $buildRepo) { throw 'Choose another empty build path.' }
+gh repo clone LemonMantis5571/SADX-Multiplayer-Online-Review $buildRepo
+if ($LASTEXITCODE -ne 0) { throw "Clone failed: $LASTEXITCODE" }
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $buildRepo 'mod\build.ps1')
+if ($LASTEXITCODE -ne 0) { throw "Mod build failed: $LASTEXITCODE" }
+```
+
+`git -C mod/sadx-multiplayer checkout -- .` descarta cambios locales.
+
+### Compilar las páginas
+
+Se necesita Node.js 22 o más nuevo. Vite borra `gateway/public/` antes de compilar. Guarda archivos estáticos
+editables en `gateway/web/public/`, que Vite copia a `gateway/public/`.
+
+```powershell
+Push-Location .\gateway\web
+try {
+    npm ci
+    if ($LASTEXITCODE -ne 0) { throw "npm ci failed: $LASTEXITCODE" }
+    npm run typecheck
+    if ($LASTEXITCODE -ne 0) { throw "Typecheck failed: $LASTEXITCODE" }
+    npm run build
+    if ($LASTEXITCODE -ne 0) { throw "Web build failed: $LASTEXITCODE" }
+} finally {
+    Pop-Location
+}
+$required = @(
+    '.\gateway\public\index.html',
+    '.\gateway\public\host.html',
+    '.\gateway\public\assets\OFL-1.1-Inter.txt',
+    '.\gateway\public\assets\OFL-1.1-JetBrains-Mono.txt'
+)
+$missing = @($required | Where-Object { -not (Test-Path $_) })
+if ($missing.Count -gt 0) { throw "Web build output is missing: $($missing -join ', ')" }
+```
+
+**Hecho cuando:** los comandos terminan con código 0 y las cuatro rutas existen. Incluye los cambios generados
+en `gateway/public/` en el commit. El servidor sirve esos archivos directamente.
+
+La sala Node no necesita compilación. Para sus pruebas locales, sigue [Cambiar el código](#cambiar-el-código);
+usan el puerto 8199 y no necesitan SADX.
 
 ## Reglas
 
@@ -24,8 +113,13 @@ repo. El CLI responde en JSON (con `--human`, en texto para personas).
    `<SADX>\sadx-online-backups\<fecha>`.
 6. **Los juegos salen de las copias de Steam del usuario**: SADX, convertido por él con el SADX Mod Installer,
    y Counter-Strike 1.6 para los soldados. El repo y las releases no traen archivos de ningún juego.
-7. **El repo y sus releases son privados**: la base del mod no tiene licencia (ver Agradecimientos en el README). Se quedan en
-   GitHub, en este repo; el zip del mod no se comparte fuera.
+7. **El usuario controla la publicación.** No cambies la visibilidad del repo ni publiques releases. La licencia
+   MIT cubre solo el código y la documentación originales de SADX Online. La base del mod, el patch derivado, los
+   binarios, las texturas y los archivos del juego conservan sus propias condiciones. No copies archivos del
+   juego al repo ni distribuyas esos componentes sin autorización del titular.
+8. **Usa la historia limpia.** Clona `LemonMantis5571/SADX-Multiplayer-Online-Review` en una carpeta nueva. No
+   mezcles ni subas commits o tags de `SADX-Multiplayer-Online`, el repo anterior. Si la carpeta de destino ya
+   existe, elige otra ruta en vez de reutilizarla.
 
 ## Pasos
 
@@ -33,7 +127,7 @@ repo. El CLI responde en JSON (con `--human`, en texto para personas).
 
 - Windows 10 versión 2004 o más nuevo: `[Environment]::OSVersion.Version` con `Build` ≥ 19041.
 - Sonic Adventure DX comprado en Steam e instalado.
-- Una cuenta de GitHub con acceso a `LemonMantis5571/SADX-Multiplayer-Online` (repo privado).
+- Una cuenta de GitHub con acceso a `LemonMantis5571/SADX-Multiplayer-Online-Review` (repo privado).
 - Opcional: Counter-Strike (el 1.6, app 10 de Steam) en su cuenta, para los soldados (paso 7).
 
 **Hecho cuando:** el build es ≥ 19041 y el usuario confirmó SADX y GitHub (y dijo si tiene Counter-Strike).
@@ -74,10 +168,10 @@ Si no hay sesión, pide al usuario que ejecute él mismo
 `gh auth login --hostname github.com --git-protocol https --web` (abre el navegador con un código). Después:
 
 ```powershell
-gh repo view LemonMantis5571/SADX-Multiplayer-Online --json name
+gh repo view LemonMantis5571/SADX-Multiplayer-Online-Review --json name
 ```
 
-**Hecho cuando:** ese comando devuelve `{"name":"SADX-Multiplayer-Online"}`. Si dice que no encuentra el repo,
+**Hecho cuando:** ese comando devuelve `{"name":"SADX-Multiplayer-Online-Review"}`. Si dice que no encuentra el repo,
 la cuenta no tiene acceso: el dueño del repo tiene que invitarla; avisa al usuario y espera.
 
 ### 4. El repo
@@ -86,12 +180,12 @@ Clónalo en una ruta corta, fuera de OneDrive (la compilación del mod se rompe 
 caracteres):
 
 ```powershell
-gh repo clone LemonMantis5571/SADX-Multiplayer-Online "$env:USERPROFILE\SADX-Online"
+gh repo clone LemonMantis5571/SADX-Multiplayer-Online-Review "$env:USERPROFILE\SADX-Online"
 Set-Location "$env:USERPROFILE\SADX-Online"
 ```
 
-Si ya estaba clonado: `git pull` en su carpeta. Los submódulos solo hacen falta para compilar el mod
-(ver [Compilar el mod](#compilar-el-mod)).
+Si la carpeta de destino ya existe, elige otra ruta. No reutilices un clon del repo anterior ni hagas `git pull`
+desde ese clon. El script `mod/build.ps1` inicializa los submódulos que necesita.
 
 **Hecho cuando:** existe `gateway\agent-cli.mjs` en la carpeta actual.
 
@@ -122,8 +216,10 @@ Con el juego cerrado (`Get-Process sonic -ErrorAction SilentlyContinue` no devue
 node gateway/agent-cli.mjs setup --sadx "$sadx" --human
 ```
 
-`setup` baja el mod de la última release del repo (con `gh`; si compilaste el mod, usa `dist\`), lo instala en
-`<SADX>\mods\sadx-multiplayer`, lo activa en el perfil del Mod Loader con los ajustes que necesita el stream
+El repo de revisión no tiene releases, así que compila primero. En un checkout nuevo, `setup` usa el DLL local
+de `dist\`. Si `dist\release.json` existe porque `setup` descargó una release antes, bórralo para que `setup`
+use el nuevo build local. Si no hay un build local en un repo que sí tiene releases, `setup` baja la última con
+`gh`. Luego instala el mod en `<SADX>\mods\sadx-multiplayer` y lo activa en el perfil del Mod Loader con los ajustes del stream
 (ventana de 1280 × 960, Direct3D 9, sin pausa al perder el foco), quita `sadx-frame-limit`, recuerda dónde
 está `sonic.exe`, elige el codificador de vídeo de la GPU, instala `werift` (conexión directa, opcional) y
 busca Counter-Strike 1.6 (paso 7). Cada línea empieza con `ok` (hecho), `falta` (qué falta y cómo
@@ -206,26 +302,12 @@ node gateway/agent-cli.mjs down
 
 **Uso diario sin agente:** `SADX-Online.cmd` (paso 8) y `SADX-Online-cerrar.cmd` (paso 9), en la raíz del repo.
 
-## Compilar el mod
-
-Hace falta cuando la cuenta no puede bajar releases o cuando cambiaste `mod/`. Visual Studio 2022 Build Tools
-con C++ ocupa varios GB: pregunta al usuario antes de instalarlo.
-
-```powershell
-winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-powershell -ExecutionPolicy Bypass -File mod\build.ps1
-```
-
-**Hecho cuando:** termina con `Mod:  …\dist\mods\sadx-multiplayer` y código de salida 0. Luego el paso 6:
-`setup` usa ese `dist\` (dice `compilado en esta PC`). Para volver a las releases, borra `dist\`. Qué hace el
-script, cómo publicar una release y cómo cambiar la base del mod: [`README.md`](README.md#building-the-mod).
-
 ## Cambiar el código
 
 - La sala y el CLI: `gateway/*.mjs`, `gateway/lib/`. Pruebas sin juego, en el 8199:
   `node gateway/agent-cli.mjs test`.
-- Las páginas: `gateway/web` (React + Vite + Tailwind + shadcn/ui); `npm install` y `npm run build` en esa
-  carpeta dejan el resultado en `gateway/public`, que va en git.
+- Las páginas: `gateway/web` (React + Vite + Tailwind + shadcn/ui); `npm ci`, `npm run typecheck` y
+  `npm run build` dejan el resultado en `gateway/public`, que va en git.
 - El mod: `mod/src` y `mod/sadx-multiplayer.patch`, luego [Compilar el mod](#compilar-el-mod). Si tocas direcciones del
   juego, pasa `mod/tools/audit_addresses.py` (ver [`README.md`](README.md#checking-the-base-mods-addresses)). Para probar en
   un punto concreto de un nivel, el juego acepta
@@ -250,5 +332,5 @@ script, cómo publicar una release y cómo cambiar la base del mod: [`README.md`
 | Los soldados son cajas y no suenan | Counter-Strike 1.6 sin instalar, o `sadx-online.ini` sin `Path` | Paso 7; reabre el juego (`down` y `up`) |
 | El log dice `[CS] … missing` | La carpeta no es la de Half-Life, o le faltan archivos | `--cstrike` con la carpeta que tiene `cstrike`; en Steam, "Verificar integridad" de Counter-Strike |
 | `build.ps1`: `Filename too long` | Ruta del repo demasiado larga | Clonar en una ruta corta (paso 4) |
-| `build.ps1`: `conflict with the patch` | Cambios a mano en el submódulo | `git -C mod/sadx-multiplayer checkout -- .` y repetir |
+| `build.ps1`: `conflict with the patch` | El submódulo tiene cambios locales o cambió la base | Inspecciona `git -C mod/sadx-multiplayer status --short`; restaura solo si no hay cambios que conservar |
 | PowerShell no deja ejecutar el script | Política de ejecución | `powershell -ExecutionPolicy Bypass -File …` |

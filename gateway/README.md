@@ -243,10 +243,14 @@ necesita compilar nada. Para cambiarlas:
 
 ```powershell
 cd gateway\web
-npm install
+npm ci
+npm run typecheck
 npm run build        # deja index.html, host.html y assets/ en ..\public
 npm run dev          # con una sala abierta en el 8123: recarga al guardar
 ```
+
+Vite vacía `gateway/public/` antes de compilar. Guarda los archivos estáticos que deban conservarse en
+`gateway/web/public/`; Vite los copia al resultado.
 
 La parte de tiempo real (WebSocket, vídeo, sonido, conexión directa, mandos) está
 en `web/src/player/room.ts`, fuera de React: dibuja cada cuadro en cuanto se

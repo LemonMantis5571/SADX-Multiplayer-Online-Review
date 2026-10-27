@@ -10,7 +10,7 @@ One PC runs the game. Everyone else joins from a link: no client, no install.
 ![Node.js](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)
 ![Video](https://img.shields.io/badge/video-H.264%20%C2%B7%20WebCodecs-5E6AD2)
 ![Audio](https://img.shields.io/badge/audio-Opus-5E6AD2)
-![License](https://img.shields.io/badge/license-private-lightgrey)
+![License](https://img.shields.io/badge/license-MIT%20%28original%20code%29-blue)
 
 [Quick start](#quick-start) · [How it works](#how-it-works) · [Usage](#usage) · [Building the mod](#building-the-mod) · [Documentation](#documentation)
 
@@ -87,10 +87,11 @@ to 20 fps.
    [SADX Mod Installer](https://sadxmodinstaller.unreliable.network/), then open SA Mod Manager once.
 2. **Clone the repository.**
    ```powershell
-   gh repo clone LemonMantis5571/SADX-Multiplayer-Online
+   gh repo clone LemonMantis5571/SADX-Multiplayer-Online-Review
    ```
-3. **Install.** Run `SADX-Online-instalar.cmd` and point it at your SADX folder. It installs the missing
-   tools, downloads the latest mod release, enables it, and tunes the Mod Loader profile for streaming
+3. **Install.** This review repository has no release packages. Build the mod from source first (see
+   [Building the mod](#building-the-mod)), then run `SADX-Online-instalar.cmd` and point it at your SADX folder.
+   The installer uses the local `dist/` package, enables it, and tunes the Mod Loader profile for streaming
    (1280 × 960 window, Direct3D 9, keeps running without focus). Anything it changes is backed up first.
 4. **Play.** Run `SADX-Online.cmd`. It opens the room, the game and the host panel, and prints the link to
    share. `SADX-Online-cerrar.cmd` shuts everything down.
@@ -175,13 +176,23 @@ A view is encoded only while someone watches it. Host upload grows with each vie
 
 ## Building the mod
 
-Releases already contain the built mod, so building is only needed when you change it.
+This review repository has no release packages. Build the mod before installing it. For a repository with a
+published release, building is needed only when you change the mod.
 
-**Prerequisites:** Git and Visual Studio 2022 or its Build Tools with the C++ workload.
+**Prerequisites:** Windows, Git, and Visual Studio 2022 or its Build Tools with MSVC v143 and the Windows 10 SDK.
+You do not need SADX installed to compile. Build from a short repo path outside OneDrive and `%TEMP%`.
+
+If Visual Studio Build Tools with the C++ workload is missing, install it:
 
 ```powershell
 winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-powershell -ExecutionPolicy Bypass -File mod\build.ps1
+```
+
+Build the mod:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\mod\build.ps1
+if ($LASTEXITCODE -ne 0) { throw "Mod build failed: $LASTEXITCODE" }
 ```
 
 `build.ps1` does the following:
@@ -193,7 +204,8 @@ powershell -ExecutionPolicy Bypass -File mod\build.ps1
 5. Packages `dist/mods/sadx-multiplayer/` and `dist/sadx-online-mod.zip`.
 
 To install your build, close the game and run `node gateway/agent-cli.mjs setup --sadx "<SADX folder>"`.
-A local build takes precedence over releases; delete `dist/` to go back to releases.
+In a clean checkout, the local build takes precedence. If `setup` downloaded a release earlier, remove
+`dist/release.json` after rebuilding to select the local build. Remove `dist/` to use the latest release when one exists.
 
 ### Releasing
 
@@ -275,7 +287,7 @@ disassembling `sonic.exe`:
 | Document | Contents |
 | --- | --- |
 | [`gateway/README.md`](gateway/README.md) | Room, video pipeline, audio, WebRTC, host panel, page and the full CLI reference (Spanish) |
-| [`AGENTS.md`](AGENTS.md) | Install-and-run procedure for AI agents, with checks and troubleshooting (Spanish) |
+| [`AGENTS.md`](AGENTS.md) | Windows build, setup and run instructions for agents, with checks and troubleshooting (Spanish) |
 
 ## Known limitations
 
@@ -305,5 +317,5 @@ The MIT License does not cover the `mod/sadx-multiplayer` submodule, upstream-de
 files. Those remain under their own licenses or separate rights-holder permission. The base mod and release
 packages are published under that separate permission, not relicensed by this repository.
 
-The bundled Inter and JetBrains Mono font licenses are included beside the font files in
-`gateway/public/assets/` (`OFL-1.1-Inter.txt` and `OFL-1.1-JetBrains-Mono.txt`).
+The Inter and JetBrains Mono font licenses are in `gateway/web/public/assets/`. Vite copies them into
+`gateway/public/assets/` during the web build.
